@@ -126,6 +126,12 @@ html, body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+body {
+  height: 700px;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
 /* 容器 */
 .pf-header {
   padding: var(--spacing-md);
@@ -149,6 +155,8 @@ html, body {
   overflow-x: auto;
   scrollbar-width: none;
   -ms-overflow-style: none;
+  background-color: var(--color-bg-secondary);
+  border-bottom: 1px solid var(--color-border);
 }
 
 .pf-tabs::-webkit-scrollbar {
@@ -271,6 +279,8 @@ html, body {
   display: flex;
   gap: var(--spacing-sm);
   padding: var(--spacing-md) 0;
+  flex-wrap: wrap;
+  align-items: center;
 }
 
 .pf-actions-full {
@@ -302,6 +312,11 @@ html, body {
   gap: var(--spacing-sm);
   align-items: center;
   margin-bottom: var(--spacing-md);
+  flex-wrap: wrap;
+}
+
+.pf-fuzz-actions .pf-status {
+  flex: 1 1 100%;
 }
 
 .pf-vue-actions {
@@ -416,16 +431,17 @@ html, body {
 /* 网格布局 */
 .pf-two-col {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--spacing-md);
   padding: var(--spacing-md) 0;
 }
 
 .pf-fuzz-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--spacing-md);
   padding: var(--spacing-md) 0;
+  align-items: start;
 }
 
 .pf-fuzz-grid-full {
@@ -442,6 +458,10 @@ html, body {
   color: var(--color-text-secondary);
   text-transform: uppercase;
   letter-spacing: 1px;
+}
+
+.pf-status:empty {
+  display: none;
 }
 
 /* 进度条 */
@@ -599,10 +619,10 @@ html, body {
 }
 
 /* 响应式设计 */
-@media (max-width: 768px) {
+@media (max-width: 640px) {
   html, body {
     width: 100%;
-    min-height: 100vh;
+    height: 100vh;
   }
   
   .pf-two-col,
@@ -762,6 +782,7 @@ html, body {
   display: flex;
   gap: var(--spacing-sm);
   align-items: center;
+  flex-wrap: wrap;
 }
 
 /* 按钮组 */
@@ -773,7 +794,7 @@ html, body {
 }
 
 /* 响应式调整 */
-@media (max-width: 680px) {
+@media (max-width: 600px) {
   .pf-actions-5 {
     grid-template-columns: repeat(2, 1fr);
   }
