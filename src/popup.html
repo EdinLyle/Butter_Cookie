@@ -1,0 +1,622 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="Content-Security-Policy" content="default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; script-src * 'unsafe-inline' 'unsafe-eval' blob: data:; style-src * 'unsafe-inline';">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>🍪 黄油曲奇</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+  </head>
+  <body>
+    <header class="pf-header">
+      <div class="pf-title">🍪 黄油曲奇</div>
+    </header>
+    <nav class="pf-tabs">
+      <button id="tab-info" class="pf-tab  pf-tab-active">信息收集</button>
+      <button id="tab-xss" class="pf-tab">XSS测试</button>
+      <button id="tab-sql" class="pf-tab">SQL 注入</button>
+      <button id="tab-security" class="pf-tab">端点安全扫描</button>
+      <button id="tab-shodan" class="pf-tab">Shodan 主机信息</button>
+      <button id="tab-tools" class="pf-tab">辅助工具</button>
+      <button id="tab-team" class="pf-tab">关于作者</button>
+    </nav>
+    <main class="pf-main">
+      <section id="mod-xss" class="pf-module">
+        <section class="pf-actions">
+          <button id="fuzzAll" class="pf-btn">批量填充</button>
+          <button id="readCsp" class="pf-btn">读取 CSP</button>
+        </section>
+        <div class="pf-vents"></div>
+        <div id="security-container"></div>
+        <div class="pf-vents"></div>
+        <section class="pf-csp">
+          <ul id="csp-list" class="pf-list"></ul>
+        </section>
+        <div class="pf-vents"></div>
+        <div id="forms-container"></div>
+        <div class="pf-configs-title">Query 参数区</div>
+        <ul id="query-list" class="pf-list"></ul>
+        <div class="pf-configs-title">Hash 参数区</div>
+        <ul id="hash-list" class="pf-list"></ul>
+        <div class="pf-configs-title">Path 参数区</div>
+        <ul id="path-list" class="pf-list"></ul>
+        <section class="pf-actions-full">
+          <button id="parseUrl" class="pf-btn">提取参数</button>
+        </section>
+        <div class="pf-configs-title">编码转换工具箱</div>
+        <div class="pf-encoder">
+          <input id="encoderInput" class="pf-input" type="text" placeholder="输入待转换的 Payload">
+          <div class="pf-encoder-actions">
+            <button id="encHtml" class="pf-btn">HTML 实体</button>
+            <button id="encUrl" class="pf-btn">URL 编码</button>
+            <button id="encHex" class="pf-btn">十六进制</button>
+          </div>
+          <ul id="encoderList" class="pf-list"></ul>
+        </div>
+      </section>
+
+      <section id="mod-sql" class="pf-module pf-hidden">
+        <div class="pf-configs-title">SQL HackBar</div>
+        <section class="pf-controls">
+          <div class="pf-field">
+            <div class="pf-field-label">METHOD</div>
+            <select id="sqlMethod" class="pf-select">
+              <option>GET</option>
+              <option>POST</option>
+              <option>PUT</option>
+              <option>PATCH</option>
+              <option>DELETE</option>
+            </select>
+          </div>
+          <div class="pf-field">
+            <div class="pf-field-label">URL</div>
+            <input id="sqlUrl" class="pf-input" type="text" placeholder="https://target/path?x=1">
+          </div>
+        </section>
+        <section class="pf-actions">
+          <button id="sqlFill" class="pf-btn">从当前页填充</button>
+          <button id="sqlSend" class="pf-btn">发送请求</button>
+        </section>
+
+        <div class="pf-vents"></div>
+
+        <div class="pf-configs-title">注入入口</div>
+        <section class="pf-controls">
+          <div class="pf-field">
+            <div class="pf-field-label">ENTRY</div>
+            <select id="sqlEntry" class="pf-select">
+              <option value="url">URL 参数</option>
+              <option value="post">POST (x-www-form-urlencoded)</option>
+              <option value="json">JSON</option>
+              <option value="cookie">Cookie</option>
+              <option value="header">Header</option>
+            </select>
+          </div>
+          <div class="pf-field">
+            <div class="pf-field-label">KEY</div>
+            <input id="sqlKey" class="pf-input" type="text" placeholder="id / uid / token">
+          </div>
+        </section>
+        <section class="pf-controls">
+          <div class="pf-field">
+            <div class="pf-field-label">PAYLOAD</div>
+            <input id="sqlPayload" class="pf-input" type="text" placeholder="' OR 1=1-- -">
+          </div>
+          <div class="pf-field">
+            <div class="pf-field-label">ACTIONS</div>
+            <div class="pf-sql-actions">
+              <button id="sqlAppend" class="pf-btn">追加</button>
+              <button id="sqlReplace" class="pf-btn">替换</button>
+            </div>
+          </div>
+        </section>
+        <div class="pf-vents"></div>
+
+        <div class="pf-configs-title">Headers</div>
+        <div class="pf-sql">
+          <textarea id="sqlHeaders" class="pf-textarea" placeholder="User-Agent: ...&#10;X-Forwarded-For: ..."></textarea>
+        </div>
+
+        <div class="pf-configs-title">Cookie</div>
+        <div class="pf-sql">
+          <textarea id="sqlCookies" class="pf-textarea" placeholder="key=value; key2=value2"></textarea>
+        </div>
+
+        <div class="pf-configs-title">Body</div>
+        <section class="pf-controls">
+          <div class="pf-field">
+            <div class="pf-field-label">BODY TYPE</div>
+            <select id="sqlBodyType" class="pf-select">
+              <option value="none">None</option>
+              <option value="form">x-www-form-urlencoded</option>
+              <option value="json">application/json</option>
+              <option value="raw">Raw</option>
+            </select>
+          </div>
+          <div class="pf-field">
+            <div class="pf-field-label">TOOLS</div>
+            <div class="pf-sql-actions">
+              <button id="sqlCurl" class="pf-btn">复制 Curl</button>
+              <button id="sqlClear" class="pf-btn">清空</button>
+            </div>
+          </div>
+        </section>
+        <div class="pf-sql">
+          <textarea id="sqlBody" class="pf-textarea" placeholder="a=1&#10;b=2"></textarea>
+        </div>
+
+        <div class="pf-vents"></div>
+
+        <div class="pf-configs-title">Response</div>
+        <div class="pf-sql">
+          <div id="sqlRespMeta" class="pf-sql-meta"></div>
+          <div class="pf-sql-split">
+            <pre id="sqlRespHeaders" class="pf-code-block"></pre>
+            <pre id="sqlRespBody" class="pf-code-block"></pre>
+          </div>
+        </div>
+      </section>
+
+      <section id="mod-info" class="pf-module pf-hidden">
+        <div class="pf-configs-title">指定 User-Agent</div>
+        <section class="pf-controls">
+          <div class="pf-field">
+            <div class="pf-field-label">SITE</div>
+            <input id="uaSite" class="pf-input" type="text" readonly>
+          </div>
+          <div class="pf-field">
+            <div class="pf-field-label">UA</div>
+            <input id="uaInput" class="pf-input" type="text" placeholder="Mozilla/5.0 ...">
+          </div>
+        </section>
+        <div class="pf-ua-presets">
+          <button class="pf-btn-mini pf-ua-preset" data-ua="Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1">iPhone Safari</button>
+          <button class="pf-btn-mini pf-ua-preset" data-ua="Mozilla/5.0 (Linux; Android 14; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36">Android Chrome</button>
+          <button class="pf-btn-mini pf-ua-preset" data-ua="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36">Windows Chrome</button>
+          <button class="pf-btn-mini pf-ua-preset" data-ua="Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 MicroMessenger/7.0.17(0x17001126) NetType/WIFI Language/zh_CN">IOS</button>
+          <button class="pf-btn-mini pf-ua-preset" data-ua="Mozilla/5.0 (Linux; Android 10; CDY-AN90 Build/HUAWEICDY-AN90; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/78.0.3904.62 XWEB/2691 MMWEBSDK/200801 Mobile Safari/537.36 MMWEBID/4006 MicroMessenger/7.0.18.1740(0x2700123B) Process/toolsmp WeChat/arm64 NetType/4G Language/zh_CN ABI/arm64">荣耀</button>
+          <button class="pf-btn-mini pf-ua-preset" data-ua="Mozilla/5.0 (Linux; Android 10; JEF-AN00 Build/HUAWEIJEF-AN00; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/78.0.3904.62 XWEB/2691 MMWEBSDK/200901 Mobile Safari/537.36 MMWEBID/8362 MicroMessenger/7.0.19.1760(0x2700133F) Process/toolsmp WeChat/arm64 NetType/WIFI Language/zh_CN ABI/arm64">华为nova</button>
+          <button class="pf-btn-mini pf-ua-preset" data-ua="Mozilla/5.0 (Linux; Android 9; PBEM00 Build/PKQ1.190519.001; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/78.0.3904.62 XWEB/2691 MMWEBSDK/200901 Mobile Safari/537.36 MMWEBID/4773 MicroMessenger/7.0.19.1760(0x27001335) Process/toolsmp WeChat/arm64 NetType/4G Language/zh_CN ABI/arm64">OPPO</button>
+          <button class="pf-btn-mini pf-ua-preset" data-ua="Mozilla/5.0 (Linux; Android 8.1.0; MI 5X Build/OPM1.171019.019; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/78.0.3904.62 XWEB/2691 MMWEBSDK/200801 Mobile Safari/537.36 MMWEBID/9633 MicroMessenger/7.0.18.1740(0x2700123B) Process/toolsmp WeChat/arm64 NetType/4G Language/zh_CN ABI/arm64">小米</button>
+          <button class="pf-btn-mini pf-ua-preset" data-ua="Mozilla/5.0 (iPhone; CPU iPhone OS 6_1_3 like Mac OS X) AppleWebKit/536.26 (KHTML, like Gecko) Mobile/10B329 MicroMessenger/5.0.1">iPhone (Old)</button>
+          <button class="pf-btn-mini pf-ua-preset" data-ua="Mozilla/5.0 (Linux; U; Android 2.3.6; zh-cn; GT-S5660 Build/GINGERBREAD) AppleWebKit/533.1 (KHTML, like Gecko) Version/4.0 Mobile Safari/533.1 MicroMessenger/4.5.255">Android (Old)</button>
+        </div>
+        <div class="pf-configs-title">指定 Cookie</div>
+        <section class="pf-controls">
+          <div class="pf-field">
+            <div class="pf-field-label">SITE</div>
+            <input id="cookieSite" class="pf-input" type="text" readonly>
+          </div>
+          <div class="pf-field">
+            <div class="pf-field-label">COOKIE</div>
+            <input id="cookieInput" class="pf-input" type="text" placeholder="key=value; key2=value2">
+          </div>
+        </section>
+        <div class="pf-configs-title">指定 XFF / Referer / Client-IP / X-Real-IP</div>
+        <section class="pf-controls">
+          <div class="pf-field">
+            <div class="pf-field-label">X-FORWARDED-FOR</div>
+            <input id="xffInput" class="pf-input" type="text" placeholder="1.2.3.4">
+          </div>
+          <div class="pf-field">
+            <div class="pf-field-label">REFERER</div>
+            <input id="refererInput" class="pf-input" type="text" placeholder="https://example.com/">
+          </div>
+        </section>
+        <section class="pf-controls">
+          <div class="pf-field">
+            <div class="pf-field-label">CLIENT-IP</div>
+            <input id="clientIpInput" class="pf-input" type="text" placeholder="1.2.3.4">
+          </div>
+          <div class="pf-field">
+            <div class="pf-field-label">X-REAL-IP</div>
+            <input id="xRealIpInput" class="pf-input" type="text" placeholder="1.2.3.4">
+          </div>
+        </section>
+        <section class="pf-actions">
+          <button id="uaApply" class="pf-btn">应用并刷新</button>
+          <button id="uaClear" class="pf-btn">清除并刷新</button>
+        </section>
+        <div class="pf-vents"></div>
+        <div class="pf-configs-title">敏感信息收集</div>
+        <div class="pf-sniff">
+          <div class="pf-sniff-actions pf-actions-5">
+            <button id="sniffAssets" class="pf-btn">扫描资源</button>
+            <button id="exportJson" class="pf-btn">导出 JSON</button>
+            <button id="exportTxt" class="pf-btn">导出 TXT</button>
+            <button id="exportCsv" class="pf-btn">导出 CSV</button>
+            <button id="exportXlsx" class="pf-btn">导出 XLSX</button>
+          </div>
+          <ul id="sniff-list" class="pf-list"></ul>
+        </div>
+        <div class="pf-two-col">
+          <div class="pf-card">
+            <div class="pf-configs-title pf-configs-title-card">框架指纹</div>
+            <div class="pf-fp pf-card-body">
+              <div class="pf-fp-actions">
+                <button id="sniffFP" class="pf-btn">识别指纹</button>
+              </div>
+              <ul id="fp-list" class="pf-list"></ul>
+            </div>
+          </div>
+          <div class="pf-card">
+            <div class="pf-configs-title pf-configs-title-card">蜜罐识别</div>
+            <div class="pf-fp pf-card-body">
+              <div class="pf-fp-actions">
+                <button id="sniffHoney" class="pf-btn">检测蜜罐</button>
+              </div>
+              <ul id="honey-list" class="pf-list"></ul>
+            </div>
+          </div>
+        </div>
+        
+        <div class="pf-vents"></div>
+        <div class="pf-configs-title">Fuzz 扫描</div>
+        <div class="pf-fuzz-grid">
+          <div class="pf-card">
+            <div class="pf-configs-title pf-configs-title-card">JS 文件 Fuzz</div>
+            <div class="pf-card-body pf-fuzz-card-body">
+              <section class="pf-fuzz-actions">
+                <button id="fuzzJs" class="pf-btn">开始</button>
+                <button id="fuzzJsPause" class="pf-btn">暂停</button>
+                <button id="fuzzJsOpenAll" class="pf-btn">Open All</button>
+                <span id="fuzzJsStatus" class="pf-status"></span>
+              </section>
+              <div id="fuzzJsProgress" class="pf-progress-bar"><div class="pf-progress-value"></div></div>
+              <ul id="fuzzJsList" class="pf-list"></ul>
+            </div>
+          </div>
+
+          <div class="pf-card">
+            <div class="pf-configs-title pf-configs-title-card">API Fuzz</div>
+            <div class="pf-card-body pf-fuzz-card-body">
+              <section class="pf-fuzz-actions">
+                <button id="fuzzApi" class="pf-btn">开始</button>
+                <button id="fuzzApiPause" class="pf-btn">暂停</button>
+                <span id="fuzzApiStatus" class="pf-status"></span>
+              </section>
+              <div id="fuzzApiProgress" class="pf-progress-bar"><div class="pf-progress-value"></div></div>
+              <ul id="fuzzApiList" class="pf-list"></ul>
+            </div>
+          </div>
+
+          <div class="pf-card pf-fuzz-grid-full">
+            <div class="pf-configs-title pf-configs-title-card">接口 Fuzz</div>
+            <div class="pf-card-body pf-fuzz-card-body">
+              <div class="pf-fuzz-path">
+                <div class="pf-field-label">PATH</div>
+                <input id="fuzzParamPath" class="pf-input" type="text" placeholder="/web/pv">
+              </div>
+              <section class="pf-fuzz-actions">
+                <button id="fuzzParam" class="pf-btn">开始</button>
+                <button id="fuzzParamPause" class="pf-btn">暂停</button>
+                <span id="fuzzParamStatus" class="pf-status"></span>
+              </section>
+              <div id="fuzzParamProgress" class="pf-progress-bar"><div class="pf-progress-value"></div></div>
+              <ul id="fuzzParamList" class="pf-list"></ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="mod-tools" class="pf-module pf-hidden">
+        <div class="pf-configs-title">Vue 快速检测</div>
+        <div class="pf-card">
+          <div class="pf-card-body pf-vue-card-body">
+            <section class="pf-vue-actions">
+              <button id="vueDetect" class="pf-btn">检测 Vue</button>
+              <button id="vueDumpRoutes" class="pf-btn">导出路由</button>
+              <button id="vueBypass" class="pf-btn">绕过路由守卫</button>
+              <button id="vueCopyUrls" class="pf-btn">复制 URL 列表</button>
+              <button id="vueOpenAll" class="pf-btn">Open All</button>
+            </section>
+            <div id="vueStatus" class="pf-status"></div>
+          </div>
+        </div>
+
+        <div class="pf-vents"></div>
+        <div class="pf-configs-title">检测结果</div>
+        <ul id="vueDetectList" class="pf-list"></ul>
+
+        <div class="pf-vents"></div>
+        <div class="pf-configs-title">路由 URL</div>
+        <div class="pf-card">
+          <div class="pf-card-body pf-vue-card-body">
+            <textarea id="vueUrls" class="pf-textarea" rows="8" readonly placeholder="点击“导出路由”生成 URL 列表"></textarea>
+          </div>
+        </div>
+
+        <div class="pf-vents"></div>
+        <div class="pf-configs-title">JavaScript 工具</div>
+        <div class="pf-card">
+          <div class="pf-card-body">
+            <div class="pf-configs-title">禁用 JavaScript</div>
+            <section class="pf-controls">
+              <div class="pf-field">
+                <div class="pf-field-label">SITE</div>
+                <input id="jsSite" class="pf-input" type="text" readonly>
+              </div>
+              <div class="pf-field">
+                <div class="pf-field-label">JS STATUS</div>
+                <input id="jsState" class="pf-input" type="text" readonly>
+              </div>
+            </section>
+            <section class="pf-actions">
+              <button id="jsDisable" class="pf-btn">禁用 JS</button>
+              <button id="jsEnable" class="pf-btn">启用 JS</button>
+            </section>
+
+            <div class="pf-vents"></div>
+            <div class="pf-configs-title">反调试绕过脚本</div>
+            <section class="pf-actions">
+              <button id="jsBypassResize" class="pf-btn">窗口尺寸检测绕过</button>
+              <button id="jsBypassInfiniteDebugger" class="pf-btn">无限 Debugger 绕过</button>
+              <button id="jsBypassEvalDebugger" class="pf-btn">Eval Debugger 绕过</button>
+              <button id="jsBypassToString" class="pf-btn">toString 环境检测绕过</button>
+            </section>
+          </div>
+        </div>
+
+        <div class="pf-vents"></div>
+        <div class="pf-configs-title">批量 URL 打开工具</div>
+        <div class="pf-card">
+          <div class="pf-card-body">
+            <div class="pf-configs-title">URL 列表</div>
+            <textarea id="urlList" class="pf-textarea" rows="8" placeholder="每行输入一个 URL"></textarea>
+            
+            <div class="pf-vents"></div>
+            <section class="pf-controls">
+              <div class="pf-field">
+                <div class="pf-field-label">聚焦新标签页</div>
+                <div class="pf-switch-container">
+                  <div class="switch" id="focusTabs"></div>
+                </div>
+              </div>
+              <div class="pf-field">
+                <div class="pf-field-label">打开延迟: <span id="openDelayValue">0</span> 秒</div>
+                <input type="range" id="openDelayRange" min="0" max="120" value="0" class="pf-range">
+              </div>
+            </section>
+            
+            <div class="pf-vents"></div>
+            <section class="pf-actions">
+              <button id="openUrlList" class="pf-btn">打开 URL</button>
+              <button id="stopUrlList" class="pf-btn pf-hidden">停止</button>
+              <button id="getTabUrlList" class="pf-btn">获取当前标签页 URL</button>
+              <button id="clearUrlList" class="pf-btn">清空</button>
+            </section>
+            
+            <div class="pf-vents"></div>
+            <div class="pf-progress-bar" id="urlProgressBar" style="display: none;">
+              <div class="pf-progress-value" style="width: 0%;"></div>
+            </div>
+            
+            <div class="pf-vents"></div>
+            <div id="urlOpenStatusContainer" class="pf-status-container"></div>
+          </div>
+        </div>
+
+        <div class="pf-vents"></div>
+        <div class="pf-configs-title">URL 列表管理</div>
+        <div class="pf-card">
+          <div class="pf-card-body">
+            <section class="pf-controls">
+              <div class="pf-field">
+                <div class="pf-field-label">URL 列表</div>
+                <select id="urlListCombo" class="pf-select">
+                  <option>选择 URL 列表</option>
+                </select>
+              </div>
+              <div class="pf-field">
+                <div class="pf-field-label">列表名称</div>
+                <input type="text" id="listName" class="pf-input" placeholder="输入列表名称">
+              </div>
+            </section>
+            
+            <div class="pf-vents"></div>
+            <section class="pf-actions">
+              <button id="loadList" class="pf-btn">加载列表</button>
+              <button id="editList" class="pf-btn">编辑列表</button>
+              <button id="updateList" class="pf-btn pf-hidden">更新列表</button>
+              <button id="deleteList" class="pf-btn">删除列表</button>
+              <button id="saveList" class="pf-btn">保存为列表</button>
+            </section>
+            
+            <div class="pf-vents"></div>
+            <div id="urlListStatusContainer" class="pf-status-container"></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="mod-team" class="pf-module pf-hidden">
+        <div class="pf-configs-title">作者简介</div>
+        <div class="pf-card">
+          <div class="pf-card-body">
+            <p class="pf-text-content">
+              作者：0x八月 2026即将毕业的菜鸡一枚，座右铭：“保持热爱，保持勇敢，做自己的讲述者”，欢迎交流学习。
+            </p>
+          </div>
+        </div>
+
+        <div class="pf-vents"></div>
+        <div class="pf-configs-title">联系我们</div>
+        <div class="pf-card">
+          <div class="pf-card-body">
+            <div class="pf-field">
+              <div class="pf-field-label">作者微信</div>
+              <input class="pf-input auto-select" type="text" readonly value="a3193698455">
+            </div>
+             <div class="pf-field pf-mt-10">
+              <div class="pf-field-label">公众号</div>
+              <input class="pf-input auto-select" type="text" readonly value="0x八月">
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="mod-security" class="pf-module pf-hidden">
+        <div class="pf-configs-title">端点安全扫描</div>
+        <div class="pf-card">
+          <div class="pf-card-body">
+            <div class="pf-field">
+              <div class="pf-field-label">总开关</div>
+              <div class="pf-switch-container">
+                <div class="switch master-switch" id="vulnradar-master-switch"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="pf-vents"></div>
+
+        <div class="pf-card">
+          <div class="pf-configs-title pf-configs-title-card">JS 端点发现</div>
+          <div class="pf-card-body">
+            <p class="pf-text-content">提取 API 端点并检测敏感数据</p>
+            <div class="pf-actions">
+              <button class="pf-btn" data-module="endpoint-finder">立即测试</button>
+              <div class="pf-switch-container">
+                <span class="pf-switch-label">自动扫描</span>
+                <div class="switch" data-module="endpoint-finder"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="pf-card">
+          <div class="pf-configs-title pf-configs-title-card">敏感目录发现</div>
+          <div class="pf-card-body">
+            <p class="pf-text-content">扫描常见敏感路径和配置文件</p>
+            <div class="pf-actions">
+              <button class="pf-btn" data-module="sensitive-dir-finder">立即测试</button>
+              <div class="pf-switch-container">
+                <span class="pf-switch-label">自动扫描</span>
+                <div class="switch" data-module="sensitive-dir-finder"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="pf-card">
+          <div class="pf-configs-title pf-configs-title-card">DOM XSS 检测</div>
+          <div class="pf-card-body">
+            <p class="pf-text-content">检测 DOM 型 XSS 漏洞</p>
+            <div class="pf-actions">
+              <button class="pf-btn" data-module="dom-xss-detector">立即测试</button>
+              <div class="pf-switch-container">
+                <span class="pf-switch-label">自动扫描</span>
+                <div class="switch" data-module="dom-xss-detector"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="pf-card">
+          <div class="pf-configs-title pf-configs-title-card">跨域消息追踪</div>
+          <div class="pf-card-body">
+            <p class="pf-text-content">监控跨域消息传递事件</p>
+            <div class="pf-actions">
+              <button class="pf-btn" data-module="postmessage-tracker">立即测试</button>
+              <div class="pf-switch-container">
+                <span class="pf-switch-label">自动扫描</span>
+                <div class="switch" data-module="postmessage-tracker"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="pf-card">
+          <div class="pf-configs-title pf-configs-title-card">原型污染检测</div>
+          <div class="pf-card-body">
+            <p class="pf-text-content">检查原型污染漏洞</p>
+            <div class="pf-actions">
+              <button class="pf-btn" data-module="prototype-pollution">立即测试</button>
+              <div class="pf-switch-container">
+                <span class="pf-switch-label">自动扫描</span>
+                <div class="switch" data-module="prototype-pollution"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="pf-card">
+          <div class="pf-configs-title pf-configs-title-card">重定向漏洞检测</div>
+          <div class="pf-card-body">
+            <p class="pf-text-content">检测开放重定向漏洞</p>
+            <div class="pf-actions">
+              <button class="pf-btn" data-module="redirect-detector">立即测试</button>
+              <div class="pf-switch-container">
+                <span class="pf-switch-label">自动扫描</span>
+                <div class="switch" data-module="redirect-detector"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="pf-vents"></div>
+        <div class="pf-configs-title">检测结果</div>
+        <div class="pf-card">
+          <div class="pf-card-body">
+            <div class="summary-header" id="vulnradar-summary-header">
+              <span>扫描结果摘要</span>
+              <span class="collapse-icon">▼</span>
+            </div>
+            <div class="summary-content" id="vulnradar-summary-content"></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="mod-shodan" class="pf-module pf-hidden">
+        <div class="pf-configs-title">Shodan 主机信息</div>
+        <div class="pf-card">
+          <div class="pf-card-body">
+            <div class="pf-field">
+              <div class="pf-field-label">当前域名</div>
+              <input id="shodan-domain" class="pf-input" type="text" readonly>
+            </div>
+          </div>
+        </div>
+
+        <div class="pf-vents"></div>
+
+        <div class="pf-card">
+          <div class="pf-configs-title pf-configs-title-card">主机信息</div>
+          <div class="pf-card-body">
+            <table id="shodan-items" class="pf-table">
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="pf-vents"></div>
+
+        <div class="pf-card">
+          <div class="pf-configs-title pf-configs-title-card">开放端口</div>
+          <div class="pf-card-body">
+            <ul id="shodan-ports" class="pf-list"></ul>
+          </div>
+        </div>
+
+        <div class="pf-vents"></div>
+
+        <div class="pf-card">
+          <div class="pf-configs-title pf-configs-title-card">安全漏洞</div>
+          <div class="pf-card-body">
+            <div id="shodan-vulns"></div>
+          </div>
+        </div>
+
+        <div class="pf-vents"></div>
+
+        <div class="pf-actions">
+          <a id="shodan-btn-ip-details" class="pf-btn" href="#" target="_blank">查看 IP 详情</a>
+          <a id="shodan-btn-domain-details" class="pf-btn" href="#" target="_blank">查看域名详情</a>
+        </div>
+      </section>
+    </main>
+    <script src="popup.js"></script>
+  </body>
+</html>
