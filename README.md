@@ -16,6 +16,8 @@
 
 <img src="assets/FrontRecon_tool.png" alt="黄油曲奇插件图标" width="128">
 
+<p><em>如果师傅觉得工具有用的话，不妨给个Star🌟</em></p>
+
 </div>
 
 ---
@@ -427,3 +429,13 @@ Shodan
 URL_Option
 
 还有一些记不清楚的工具插件了，真心感谢。
+
+## Star History
+
+<a href="https://www.star-history.com/?repos=EdinLyle%2FButter_Cookie&type=date&legend=top-left">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/image?repos=EdinLyle/Butter_Cookie&type=date&theme=dark&legend=top-left" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/image?repos=EdinLyle/Butter_Cookie&type=date&legend=top-left" />
+   <img alt="Star History Chart" src="https://api.star-history.com/image?repos=EdinLyle/Butter_Cookie&type=date&legend=top-left" />
+ </picture>
+</a>
