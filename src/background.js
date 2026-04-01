@@ -169,8 +169,65 @@ chrome.webRequest.onHeadersReceived.addListener(
   ["responseHeaders"]
 );
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (!message || !message.type && !message.cmd) return;
-  
+  if (!message || !message.type && !message.cmd && !message.action) return;
+
+  // 信息提取模块 - 获取Cookie
+  if (message.action === 'getCookies') {
+    chrome.cookies.getAll({ url: message.url }, (cookies) => {
+      if (chrome.runtime.lastError) {
+        console.error('Error getting cookies:', chrome.runtime.lastError);
+        sendResponse({ cookies: [] });
+      } else {
+        sendResponse({ cookies: cookies });
+      }
+    });
+    return true;
+  }
+
+  // 信息提取模块 - 检查URL是否存在
+  if (message.action === 'checkUrl') {
+    fetch(message.url, { method: 'HEAD' })
+      .then(response => {
+        sendResponse({ exists: response.ok });
+      })
+      .catch(error => {
+        console.error('Error checking URL:', error);
+        sendResponse({ exists: false });
+      });
+    return true;
+  }
+
+  // 信息提取模块 - 获取内容
+  if (message.action === 'fetchContent') {
+    fetch(message.url)
+      .then(response => response.text())
+      .then(content => {
+        sendResponse({ content: content });
+      })
+      .catch(error => {
+        console.error('Error fetching content:', error);
+        sendResponse({ content: '' });
+      });
+    return true;
+  }
+
+  // 信息提取模块 - 下载文件
+  if (message.action === 'downloadFile') {
+    chrome.downloads.download({
+      url: message.url,
+      filename: message.url.split('/').pop(),
+      conflictAction: 'uniquify'
+    }, (downloadId) => {
+      if (chrome.runtime.lastError) {
+        console.error('Error downloading file:', chrome.runtime.lastError);
+        sendResponse({ success: false });
+      } else {
+        sendResponse({ success: true });
+      }
+    });
+    return true;
+  }
+
   // Shodan 相关消息处理
   if (message.cmd === 'getShodanHost') {
     const url = message.url;

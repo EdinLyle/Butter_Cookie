@@ -1,18 +1,18 @@
 <div align="center">
-<h1>🍪 黄油曲奇v1.0.3</h1>
+<h1>🍪 黄油曲奇v1.0.4</h1>
 <h3>集成化渗透测试浏览器插件</h3>
 
 <p>
   <a href="#-快速开始"><img src="https://img.shields.io/badge/快速开始-中文-blue?style=flat-square" alt="快速开始"></a>
-  <img src="https://img.shields.io/badge/version-1.0.3-orange?style=flat-square" alt="Version">
+  <img src="https://img.shields.io/badge/version-1.0.4-orange?style=flat-square" alt="Version">
   <img src="https://img.shields.io/badge/platform-Chrome%20%7C%20Edge-lightgrey?style=flat-square" alt="Platform">
   <img src="https://img.shields.io/badge/JavaScript-ES6%2B-blue?style=flat-square&logo=javascript" alt="JavaScript">
   <img src="https://img.shields.io/badge/browser%20extension-Yes-green?style=flat-square" alt="Browser Extension">
   <img src="https://img.shields.io/badge/license-MIT-yellow?style=flat-square" alt="License">
 </p>
-<p><em>黄油曲奇是一款集成化渗透测试浏览器插件，专为安全测试人员和开发者设计。它提供了丰富的安全测试工具，包括信息收集、XSS测试、SQL注入测试、端点安全扫描、Shodan主机信息查询以及多种辅助工具，帮助用户快速识别和评估Web应用的安全漏洞。</em></p>
+<p><em>黄油曲奇是一款集成化渗透测试浏览器插件，专为安全测试人员和开发者设计。它提供了丰富的安全测试工具，包括信息收集、信息提取、XSS测试、SQL注入测试、端点安全扫描、Shodan主机信息查询以及多种辅助工具，帮助用户快速识别和评估Web应用的安全漏洞。</em></p>
 
-<p><em>该插件集成了6大核心功能模块，覆盖了Web应用渗透测试的各个方面。通过直观的用户界面和强大的功能，黄油曲奇使安全测试变得简单高效，即使是非专业安全人员也能轻松操作。</em></p>
+<p><em>该插件集成了7大核心功能模块，覆盖了Web应用渗透测试的各个方面。通过直观的用户界面和强大的功能，黄油曲奇使安全测试变得简单高效，即使是非专业安全人员也能轻松操作。</em></p>
 
 <img src="assets/FrontRecon_tool.png" alt="黄油曲奇插件图标" width="128">
 
@@ -44,6 +44,7 @@
 | 特性 | 说明 |
 |------|------|
 | 🔍 **信息收集** | User-Agent管理 · Cookie管理 · HTTP头部管理 · 敏感信息收集 · 框架指纹识别 · 蜜罐检测 · Fuzz扫描 |
+| 📋 **信息提取** | 域名提取 · API提取 · JS文件提取 · 路径提取 · Cookie提取 · Map文件提取 · 编码解码工具 · 自定义正则提取 |
 | 🛡️ **XSS测试** | 批量填充 · CSP读取 · 参数提取 · 编码转换工具箱 |
 | 💉 **SQL注入测试** | SQL HackBar · 多种请求方法 · 多种注入入口 · 响应分析 · Curl命令生成 |
 | 🔐 **端点安全扫描** | JS端点发现 · 敏感目录发现 · DOM XSS检测 · 跨域消息追踪 · 原型污染检测 · 重定向漏洞检测 |
@@ -66,6 +67,7 @@
   - storage
   - tabs
   - contextMenus
+  - downloads
   - <all_urls>（主机权限）
 
 ---
@@ -74,23 +76,41 @@
 
 ### 信息收集
 
-![image-20260325123114220](assets/image-20260325123114220.png)
+​	信息收集功能中的Fuzz扫描部分的扫描字典，师傅们可以自行收集和使用自己的常用字典或者添加内容，在插件的data/  目录下自行修改即可。
+
+![image-20260402015008036](assets/image-20260402015008036.png)
+
+![image-20260402013228553](assets/image-20260402013228553.png)
+
+### 信息提取
+
+![image-20260402013324194](assets/image-20260402013324194.png)
+
+自定义正则提取例如：
+
+id = “ ”
+
+```
+\bid=["'][^"']+["']
+```
+
+![image-20260402013821029](assets/image-20260402013821029.png)
 
 ### XSS测试
 
-![image-20260325123136111](assets/image-20260325123136111.png)
+![image-20260402014021677](assets/image-20260402014021677.png)
 
 ### SQL注入
 
-![image-20260325123149213](assets/image-20260325123149213.png)
+![image-20260402014036180](assets/image-20260402014036180.png)
 
 ### 端点安全扫描
 
-![image-20260325123211491](assets/image-20260325123211491.png)
+![image-20260402014432675](assets/image-20260402014432675.png)
 
 ### Shodan
 
-![image-20260325123229680](assets/image-20260325123229680.png)
+![image-20260402014625423](assets/image-20260402014625423.png)
 
 ### 辅助工具
 
@@ -100,7 +120,7 @@ JAVASCRIPT
 
 批量URL打开工具
 
-![image-20260325123251128](assets/image-20260325123251128.png)
+![image-20260402014658232](assets/image-20260402014658232.png)
 
 ---
 
@@ -144,6 +164,11 @@ FrontRecon/
 │   │   ├── redirect-detector.js       # 重定向漏洞检测
 │   │   ├── results-panel.js           # 结果面板
 │   │   └── sensitive-dir-finder.js    # 敏感目录发现
+│   ├── modules/           # 功能模块
+│   │   ├── info-extractor.js          # 信息提取核心模块
+│   │   ├── encode-decode.js           # 编码解码工具模块
+│   │   ├── map-extractor.js           # Map文件提取模块
+│   │   └── custom-regex.js            # 自定义正则模块
 │   ├── background.js      # 后台脚本
 │   ├── content.js         # 内容脚本
 │   ├── popup.html         # 弹出界面
@@ -174,7 +199,25 @@ FrontRecon/
 
 </details>
 
-### 2. XSS测试
+### 2. 信息提取
+
+<details>
+<summary><b>模块功能</b></summary>
+
+| 功能 | 说明 |
+|------|------|
+| **域名提取** | 从页面源码中提取所有域名信息，支持一键复制和JSON导出 |
+| **API提取** | 提取页面中的API接口URL，自动过滤静态资源文件 |
+| **JS文件提取** | 提取页面引用的JavaScript文件路径，支持高亮关键词标记 |
+| **路径提取** | 提取页面中的所有路径信息，支持一键复制和JSON导出 |
+| **Cookie提取** | 获取当前域名的所有Cookie，以name=value形式展示 |
+| **Map文件提取** | 检测并下载Source Map文件(.js.map)，保存下载历史 |
+| **编码解码工具** | 支持URL、Base64、Unicode编码解码，方便数据处理 |
+| **自定义正则提取** | 支持添加自定义正则规则，动态提取页面信息 |
+
+</details>
+
+### 3. XSS测试
 
 <details>
 <summary><b>模块功能</b></summary>
@@ -188,7 +231,7 @@ FrontRecon/
 
 </details>
 
-### 3. SQL注入测试
+### 4. SQL注入测试
 
 <details>
 <summary><b>模块功能</b></summary>
@@ -203,7 +246,7 @@ FrontRecon/
 
 </details>
 
-### 4. 端点安全扫描
+### 5. 端点安全扫描
 
 <details>
 <summary><b>模块功能</b></summary>
@@ -219,7 +262,7 @@ FrontRecon/
 
 </details>
 
-### 5. Shodan主机信息
+### 6. Shodan主机信息
 
 <details>
 <summary><b>模块功能</b></summary>
@@ -233,7 +276,7 @@ FrontRecon/
 
 </details>
 
-### 6. 辅助工具
+### 7. 辅助工具
 
 <details>
 <summary><b>模块功能</b></summary>
@@ -307,6 +350,52 @@ FrontRecon/
    - 选择需要扫描的类型（JS文件、API或接口参数）
    - 点击"开始"按钮
    - 查看扫描结果
+
+#### 信息提取模块
+
+1. **域名提取**：
+   - 点击"提取域名"按钮
+   - 查看提取的域名列表
+   - 点击"复制"复制所有域名
+   - 点击"导出JSON"导出为JSON文件
+
+2. **API提取**：
+   - 点击"提取API"按钮
+   - 查看提取的API接口URL（自动过滤静态资源）
+   - 支持一键复制和JSON导出
+
+3. **JS文件提取**：
+   - 点击"提取JS"按钮
+   - 查看提取的JavaScript文件路径
+   - 在"高亮关键词"输入框中输入关键词（逗号分隔）
+   - 包含关键词的项会被高亮显示
+
+4. **路径提取**：
+   - 点击"提取路径"按钮
+   - 查看提取的路径信息
+   - 支持一键复制和JSON导出
+
+5. **Cookie提取**：
+   - 点击"提取Cookie"按钮
+   - 查看当前域名的所有Cookie
+   - 点击"复制全部"复制所有Cookie
+
+6. **Map文件提取**：
+   - 点击"检测Map文件"按钮
+   - 查看可下载的Source Map文件列表
+   - 点击"下载"按钮下载Map文件
+   - 在"历史记录"中查看已下载的文件
+
+7. **编码解码工具**：
+   - 在输入框中输入待处理的内容
+   - 点击相应按钮进行URL/Base64/Unicode编码或解码
+   - 点击"复制结果"复制输出内容
+
+8. **自定义正则提取**：
+   - 输入规则名称和正则表达式
+   - 点击"添加规则"保存规则
+   - 在规则列表中点击"提取"按钮执行提取
+   - 点击"删除"按钮移除规则
 
 #### XSS测试模块
 
@@ -399,12 +488,29 @@ FrontRecon/
 
 ---
 
+## 更新日志(更新很晚是因为在玩洛克王国)
+
+### v1.0.4 (2026-04-02)
+- ✨ 新增信息提取模块
+- ✨ 新增域名提取功能
+- ✨ 新增API提取功能
+- ✨ 新增JS文件提取功能
+- ✨ 新增路径提取功能
+- ✨ 新增Cookie提取功能
+- ✨ 新增Map文件提取功能
+- ✨ 新增编码解码工具（URL/Base64/Unicode）
+- ✨ 新增自定义正则提取功能
+- 🔧 添加downloads权限支持Map文件下载
+
+### v1.0.3 (2026-03-25)
+- 🎉 初始版本发布
+
 ## 作者信息
 
 - **作者**：0x八月
 - **公众号**：0x八月
-- **版本**：1.0.3
-- **更新日期**：2026-03-25
+- **版本**：1.0.4
+- **更新日期**：2026-04-02
 
 ---
 
@@ -416,9 +522,9 @@ FrontRecon/
 
 ## 致敬开源
 
-本项目基于 [XMCVE-WebRecon](https://github.com/duckpigdog/XMCVE-WebRecon) 项目二次开发，主要是原项目界面我很喜欢，所以优化一下UI界面，把自己平时渗透常用的插件集成了一下，在此向原作者 **雾島风起時** 表示诚挚的感谢！
+  本项目在开发之初最初只是便于自己的日常工作，在一次偶然间发现了这个 [XMCVE-WebRecon](https://github.com/duckpigdog/XMCVE-WebRecon) 项目发现功能很好，但是UI界面有点好看，于是开始进行二次开发，首先优化一下UI界面，然后把自己平时渗透常用的插件集成了一下，在此向原作者 **雾島风起時** 表示诚挚的感谢！后续会增加更多功能和内容
 
-项目参考了如下项目进行开发：
+项目参考了如下优秀的开源项目进行二次开发(主要工作就是借鉴项目功能，优化和改进功能，最后结合实战的实际情况的一些想法和点子开发到项目当中)：
 
 [XMCVE-WebRecon](https://github.com/duckpigdog/XMCVE-WebRecon)
 
@@ -429,7 +535,6 @@ Shodan
 URL_Option
 
 还有一些记不清楚的工具插件了，真心感谢。
-
 ## Star History
 
 <a href="https://www.star-history.com/?repos=EdinLyle%2FButter_Cookie&type=date&legend=top-left">

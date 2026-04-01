@@ -1,9 +1,9 @@
 {
   "name": "🍪 黄油曲奇",
   "description": "集成化渗透测试浏览器插件",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "manifest_version": 3,
-  "permissions": ["activeTab", "scripting", "webRequest", "cookies", "contentSettings", "declarativeNetRequest", "storage", "tabs", "contextMenus"],
+  "permissions": ["activeTab", "scripting", "webRequest", "cookies", "contentSettings", "declarativeNetRequest", "storage", "tabs", "contextMenus", "downloads"],
   "host_permissions": ["<all_urls>"],
   "background": {
     "service_worker": "src/background.js"

@@ -1428,6 +1428,7 @@ document.addEventListener("DOMContentLoaded", () => {
     xss: q("#tab-xss"),
     sql: q("#tab-sql"),
     info: q("#tab-info"),
+    "info-extract": q("#tab-info-extract"),
     security: q("#tab-security"),
     shodan: q("#tab-shodan"),
     tools: q("#tab-tools"),
@@ -1437,6 +1438,7 @@ document.addEventListener("DOMContentLoaded", () => {
     xss: q("#mod-xss"),
     sql: q("#mod-sql"),
     info: q("#mod-info"),
+    "info-extract": q("#mod-info-extract"),
     security: q("#mod-security"),
     shodan: q("#mod-shodan"),
     tools: q("#mod-tools"),
@@ -3848,7 +3850,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // 当切换到 Shodan 标签页时获取主机信息
   tabs.shodan.addEventListener('click', async () => {
     switchTab('shodan');
-    
+
     try {
       const tab = await getActiveTab();
       if (tab && tab.url) {
@@ -3863,4 +3865,689 @@ document.addEventListener("DOMContentLoaded", () => {
       console.error('Error getting Shodan host info:', e);
     }
   });
+
+  // ============ 信息提取模块 ============
+
+  // 标签页切换
+  const tabInfoExtract = q('#tab-info-extract');
+  const modInfoExtract = q('#mod-info-extract');
+
+  if (tabInfoExtract) {
+    tabInfoExtract.addEventListener('click', () => {
+      switchTab('info-extract');
+      loadMapHistory();
+      loadCustomRegexList();
+    });
+  }
+
+  // 获取当前活动标签页
+  async function getActiveTab() {
+    const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+    return tabs[0];
+  }
+
+  // 在标签页中执行脚本
+  async function execInTab(tabId, func, args = []) {
+    return new Promise((resolve, reject) => {
+      chrome.scripting.executeScript(
+        { target: { tabId }, func, args },
+        (results) => {
+          if (chrome.runtime.lastError) {
+            reject(chrome.runtime.lastError);
+          } else {
+            resolve(results);
+          }
+        }
+      );
+    });
+  }
+
+  // 渲染列表
+  function renderExtractList(listEl, items, options = {}) {
+    listEl.innerHTML = '';
+    if (!items || items.length === 0) {
+      const li = document.createElement('li');
+      li.className = 'pf-empty';
+      li.textContent = '未收集到信息';
+      listEl.appendChild(li);
+      return;
+    }
+
+    items.forEach(item => {
+      const li = document.createElement('li');
+      li.className = 'pf-item';
+
+      // 检查是否需要高亮
+      if (options.highlightKeywords && options.highlightKeywords.length > 0) {
+        const lowerItem = String(item).toLowerCase();
+        const shouldHighlight = options.highlightKeywords.some(kw =>
+          lowerItem.includes(kw.toLowerCase())
+        );
+        if (shouldHighlight) {
+          li.style.backgroundColor = 'rgba(214, 158, 46, 0.2)';
+          li.style.borderLeft = '3px solid #d69e2e';
+        }
+      }
+
+      const p = document.createElement('div');
+      p.className = 'pf-item-primary';
+      p.textContent = item;
+      p.style.wordBreak = 'break-all';
+      li.appendChild(p);
+      listEl.appendChild(li);
+    });
+  }
+
+  // 复制文本到剪贴板
+  async function copyToClipboard(text) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  // 导出JSON
+  function exportJson(filename, data) {
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      URL.revokeObjectURL(url);
+      a.remove();
+    }, 0);
+  }
+
+  // 域名提取
+  const extractDomainBtn = q('#extractDomain');
+  const copyDomainBtn = q('#copyDomain');
+  const exportDomainBtn = q('#exportDomain');
+  const domainListEl = q('#domainList');
+  let domainResults = [];
+
+  if (extractDomainBtn) {
+    extractDomainBtn.addEventListener('click', async () => {
+      try {
+        const tab = await getActiveTab();
+        const results = await execInTab(tab.id, () => {
+          const regex = /[a-zA-Z0-9\-\.]*?\.(?:xin|com|cn|net|com\.cn|vip|top|cc|shop|club|wang|xyz|luxe|site|news|pub|fun|online|win|red|loan|ren|mom|net\.cn|org|link|biz|bid|help|tech|date|mobi|so|me|tv|co|vc|pw|video|party|pics|website|store|ltd|ink|trade|live|wiki|space|gift|lol|work|band|info|click|photo|market|tel|social|press|game|kim|org\.cn|games|pro|men|love|studio|rocks|asia|group|science|design|software|engineer|lawyer|fit|beer)/gi;
+          const source = document.documentElement.outerHTML;
+          const matches = source.match(regex) || [];
+          return [...new Set(matches)];
+        });
+        domainResults = results[0]?.result || [];
+        renderExtractList(domainListEl, domainResults);
+        copyDomainBtn.classList.toggle('pf-hidden', domainResults.length === 0);
+        exportDomainBtn.classList.toggle('pf-hidden', domainResults.length === 0);
+      } catch (e) {
+        renderExtractList(domainListEl, []);
+      }
+    });
+  }
+
+  if (copyDomainBtn) {
+    copyDomainBtn.addEventListener('click', async () => {
+      const text = domainResults.join('\n');
+      const ok = await copyToClipboard(text);
+      if (ok) {
+        copyDomainBtn.textContent = '已复制';
+        setTimeout(() => copyDomainBtn.textContent = '复制', 1500);
+      }
+    });
+  }
+
+  if (exportDomainBtn) {
+    exportDomainBtn.addEventListener('click', () => {
+      exportJson('domains.json', domainResults);
+    });
+  }
+
+  // API提取
+  const extractApiBtn = q('#extractApi');
+  const copyApiBtn = q('#copyApi');
+  const exportApiBtn = q('#exportApi');
+  const apiListEl = q('#apiList');
+  let apiResults = [];
+
+  if (extractApiBtn) {
+    extractApiBtn.addEventListener('click', async () => {
+      try {
+        const tab = await getActiveTab();
+        const results = await execInTab(tab.id, () => {
+          const source = document.documentElement.outerHTML;
+          const urlRegex = /https?:\/\/[^\s/$.?#].[^\s]*/g;
+          const staticRegex = /\.(jpg|jpeg|png|gif|css|js|ico|svg|woff|woff2|ttf|eot|pdf|doc|docx|xls|xlsx|zip|rar|tar|gz|mp3|mp4|avi|mov)$/i;
+          const matches = source.match(urlRegex) || [];
+          return [...new Set(matches.filter(url => !staticRegex.test(url)))];
+        });
+        apiResults = results[0]?.result || [];
+        renderExtractList(apiListEl, apiResults);
+        copyApiBtn.classList.toggle('pf-hidden', apiResults.length === 0);
+        exportApiBtn.classList.toggle('pf-hidden', apiResults.length === 0);
+      } catch (e) {
+        renderExtractList(apiListEl, []);
+      }
+    });
+  }
+
+  if (copyApiBtn) {
+    copyApiBtn.addEventListener('click', async () => {
+      const text = apiResults.join('\n');
+      const ok = await copyToClipboard(text);
+      if (ok) {
+        copyApiBtn.textContent = '已复制';
+        setTimeout(() => copyApiBtn.textContent = '复制', 1500);
+      }
+    });
+  }
+
+  if (exportApiBtn) {
+    exportApiBtn.addEventListener('click', () => {
+      exportJson('apis.json', apiResults);
+    });
+  }
+
+  // JS文件提取
+  const extractJsBtn = q('#extractJs');
+  const copyJsBtn = q('#copyJs');
+  const exportJsBtn = q('#exportJs');
+  const jsListEl = q('#jsList');
+  const highlightKeywordsEl = q('#highlightKeywords');
+  let jsResults = [];
+
+  if (extractJsBtn) {
+    extractJsBtn.addEventListener('click', async () => {
+      try {
+        const tab = await getActiveTab();
+        const results = await execInTab(tab.id, () => {
+          const jsFiles = [];
+          const scripts = document.getElementsByTagName('script');
+          for (const script of scripts) {
+            const src = script.getAttribute('src');
+            if (src && src.endsWith('.js')) {
+              if (src.startsWith('http')) {
+                jsFiles.push(src);
+              } else if (src.startsWith('//')) {
+                jsFiles.push(window.location.protocol + src);
+              } else if (src.startsWith('/')) {
+                jsFiles.push(window.location.protocol + '//' + window.location.host + src);
+              } else {
+                const base = window.location.href.substring(0, window.location.href.lastIndexOf('/') + 1);
+                jsFiles.push(base + src);
+              }
+            }
+          }
+          return [...new Set(jsFiles)];
+        });
+        jsResults = results[0]?.result || [];
+        const keywords = highlightKeywordsEl?.value?.split(',').map(k => k.trim()).filter(k => k) || [];
+        renderExtractList(jsListEl, jsResults, { highlightKeywords: keywords });
+        copyJsBtn.classList.toggle('pf-hidden', jsResults.length === 0);
+        exportJsBtn.classList.toggle('pf-hidden', jsResults.length === 0);
+      } catch (e) {
+        renderExtractList(jsListEl, []);
+      }
+    });
+  }
+
+  if (copyJsBtn) {
+    copyJsBtn.addEventListener('click', async () => {
+      const text = jsResults.join('\n');
+      const ok = await copyToClipboard(text);
+      if (ok) {
+        copyJsBtn.textContent = '已复制';
+        setTimeout(() => copyJsBtn.textContent = '复制', 1500);
+      }
+    });
+  }
+
+  if (exportJsBtn) {
+    exportJsBtn.addEventListener('click', () => {
+      exportJson('js_files.json', jsResults);
+    });
+  }
+
+  // 路径提取
+  const extractPathBtn = q('#extractPath');
+  const copyPathBtn = q('#copyPath');
+  const exportPathBtn = q('#exportPath');
+  const pathExtractListEl = q('#pathExtractList');
+  let pathResults = [];
+
+  if (extractPathBtn) {
+    extractPathBtn.addEventListener('click', async () => {
+      try {
+        const tab = await getActiveTab();
+        const results = await execInTab(tab.id, () => {
+          const source = document.documentElement.outerHTML;
+          const pathRegex = /(?:\/[a-zA-Z0-9\-._~:/?#\[\]@!$&'()*+,;=]+)+/g;
+          const matches = source.match(pathRegex) || [];
+          return [...new Set(matches)];
+        });
+        pathResults = results[0]?.result || [];
+        renderExtractList(pathExtractListEl, pathResults);
+        copyPathBtn.classList.toggle('pf-hidden', pathResults.length === 0);
+        exportPathBtn.classList.toggle('pf-hidden', pathResults.length === 0);
+      } catch (e) {
+        renderExtractList(pathExtractListEl, []);
+      }
+    });
+  }
+
+  if (copyPathBtn) {
+    copyPathBtn.addEventListener('click', async () => {
+      const text = pathResults.join('\n');
+      const ok = await copyToClipboard(text);
+      if (ok) {
+        copyPathBtn.textContent = '已复制';
+        setTimeout(() => copyPathBtn.textContent = '复制', 1500);
+      }
+    });
+  }
+
+  if (exportPathBtn) {
+    exportPathBtn.addEventListener('click', () => {
+      exportJson('paths.json', pathResults);
+    });
+  }
+
+  // Cookie提取
+  const extractCookieBtn = q('#extractCookie');
+  const copyCookieBtn = q('#copyCookie');
+  const cookieExtractListEl = q('#cookieExtractList');
+  let cookieResults = [];
+
+  if (extractCookieBtn) {
+    extractCookieBtn.addEventListener('click', async () => {
+      try {
+        const tab = await getActiveTab();
+        chrome.runtime.sendMessage({ action: 'getCookies', url: tab.url }, (response) => {
+          cookieResults = response?.cookies || [];
+          cookieExtractListEl.innerHTML = '';
+          if (cookieResults.length === 0) {
+            const li = document.createElement('li');
+            li.className = 'pf-empty';
+            li.textContent = '未获取到Cookie';
+            cookieExtractListEl.appendChild(li);
+          } else {
+            cookieResults.forEach(cookie => {
+              const li = document.createElement('li');
+              li.className = 'pf-item';
+              const p = document.createElement('div');
+              p.className = 'pf-item-primary';
+              p.textContent = `${cookie.name}=${cookie.value}`;
+              p.style.wordBreak = 'break-all';
+              li.appendChild(p);
+              cookieExtractListEl.appendChild(li);
+            });
+          }
+          copyCookieBtn.classList.toggle('pf-hidden', cookieResults.length === 0);
+        });
+      } catch (e) {
+        cookieExtractListEl.innerHTML = '';
+        const li = document.createElement('li');
+        li.className = 'pf-empty';
+        li.textContent = '获取失败';
+        cookieExtractListEl.appendChild(li);
+      }
+    });
+  }
+
+  if (copyCookieBtn) {
+    copyCookieBtn.addEventListener('click', async () => {
+      const text = cookieResults.map(c => `${c.name}=${c.value}`).join('; ');
+      const ok = await copyToClipboard(text);
+      if (ok) {
+        copyCookieBtn.textContent = '已复制';
+        setTimeout(() => copyCookieBtn.textContent = '复制全部', 1500);
+      }
+    });
+  }
+
+  // Map文件提取
+  const detectMapBtn = q('#detectMap');
+  const clearMapHistoryBtn = q('#clearMapHistory');
+  const mapResultEl = q('#mapResult');
+  const mapHistoryListEl = q('#mapHistoryList');
+
+  async function loadMapHistory() {
+    chrome.storage.local.get(['mapHistory'], (result) => {
+      const history = result.mapHistory || [];
+      mapHistoryListEl.innerHTML = '';
+      if (history.length === 0) {
+        const li = document.createElement('li');
+        li.className = 'pf-empty';
+        li.textContent = '暂无下载记录';
+        mapHistoryListEl.appendChild(li);
+      } else {
+        history.forEach(item => {
+          const li = document.createElement('li');
+          li.className = 'pf-item';
+          const p = document.createElement('div');
+          p.className = 'pf-item-primary';
+          p.textContent = item.url.split('/').pop();
+          p.style.wordBreak = 'break-all';
+          const s = document.createElement('div');
+          s.className = 'pf-item-secondary';
+          s.textContent = new Date(item.timestamp).toLocaleString();
+          li.appendChild(p);
+          li.appendChild(s);
+          mapHistoryListEl.appendChild(li);
+        });
+      }
+    });
+  }
+
+  if (detectMapBtn) {
+    detectMapBtn.addEventListener('click', async () => {
+      try {
+        mapResultEl.textContent = '检测中...';
+        const tab = await getActiveTab();
+
+        const results = await execInTab(tab.id, () => {
+          const potentialUrls = [];
+          const scripts = document.getElementsByTagName('script');
+          for (const script of scripts) {
+            const src = script.getAttribute('src');
+            if (src && src.endsWith('.js')) {
+              let fullUrl;
+              if (src.startsWith('http')) {
+                fullUrl = src;
+              } else if (src.startsWith('//')) {
+                fullUrl = window.location.protocol + src;
+              } else if (src.startsWith('/')) {
+                fullUrl = window.location.protocol + '//' + window.location.host + src;
+              } else {
+                const base = window.location.href.substring(0, window.location.href.lastIndexOf('/') + 1);
+                fullUrl = base + src;
+              }
+              potentialUrls.push(fullUrl + '.map');
+            }
+          }
+          return [...new Set(potentialUrls)];
+        });
+
+        const urls = results[0]?.result || [];
+        if (urls.length === 0) {
+          mapResultEl.textContent = '未找到JS文件';
+          return;
+        }
+
+        const verifiedUrls = [];
+        for (const url of urls) {
+          try {
+            const response = await fetch(url, { method: 'HEAD' });
+            if (response.ok) {
+              verifiedUrls.push(url);
+            }
+          } catch (e) {}
+        }
+
+        if (verifiedUrls.length === 0) {
+          mapResultEl.textContent = '该网站暂无泄露Map文件';
+        } else {
+          mapResultEl.innerHTML = '';
+          verifiedUrls.forEach(url => {
+            const div = document.createElement('div');
+            div.className = 'pf-item';
+            div.style.marginBottom = '8px';
+
+            const urlSpan = document.createElement('span');
+            urlSpan.textContent = url.split('/').pop();
+            urlSpan.style.wordBreak = 'break-all';
+            urlSpan.style.display = 'block';
+            urlSpan.style.marginBottom = '4px';
+
+            const downloadBtn = document.createElement('button');
+            downloadBtn.className = 'pf-btn';
+            downloadBtn.textContent = '下载';
+            downloadBtn.style.fontSize = '12px';
+            downloadBtn.style.padding = '4px 8px';
+            downloadBtn.addEventListener('click', () => {
+              chrome.runtime.sendMessage({ action: 'downloadFile', url }, () => {
+                loadMapHistory();
+              });
+            });
+
+            div.appendChild(urlSpan);
+            div.appendChild(downloadBtn);
+            mapResultEl.appendChild(div);
+          });
+        }
+      } catch (e) {
+        mapResultEl.textContent = '检测失败';
+      }
+    });
+  }
+
+  if (clearMapHistoryBtn) {
+    clearMapHistoryBtn.addEventListener('click', () => {
+      chrome.storage.local.set({ mapHistory: [] }, () => {
+        loadMapHistory();
+      });
+    });
+  }
+
+  // 编码解码工具
+  const encodeInputEl = q('#encodeInput');
+  const encodeOutputEl = q('#encodeOutput');
+  const copyEncodeResultBtn = q('#copyEncodeResult');
+  const clearEncodeBtn = q('#clearEncode');
+
+  document.querySelectorAll('.encode-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const type = btn.dataset.type;
+      const action = btn.dataset.action;
+      const input = encodeInputEl?.value || '';
+
+      if (!input) {
+        if (encodeOutputEl) encodeOutputEl.value = '请输入内容';
+        return;
+      }
+
+      try {
+        let result = '';
+        switch (type) {
+          case 'url':
+            result = action === 'encode' ? encodeURIComponent(input) : decodeURIComponent(input);
+            break;
+          case 'base64':
+            result = action === 'encode'
+              ? btoa(unescape(encodeURIComponent(input)))
+              : decodeURIComponent(escape(atob(input)));
+            break;
+          case 'unicode':
+            if (action === 'encode') {
+              result = input.split('').map(char => '\\u' + char.charCodeAt(0).toString(16).padStart(4, '0')).join('');
+            } else {
+              result = input.replace(/\\u([\dA-Fa-f]{4})/g, (_, code) => String.fromCharCode(parseInt(code, 16)));
+            }
+            break;
+        }
+        if (encodeOutputEl) encodeOutputEl.value = result;
+      } catch (e) {
+        if (encodeOutputEl) encodeOutputEl.value = '操作失败: ' + e.message;
+      }
+    });
+  });
+
+  if (copyEncodeResultBtn) {
+    copyEncodeResultBtn.addEventListener('click', async () => {
+      const text = encodeOutputEl?.value || '';
+      if (!text) return;
+      const ok = await copyToClipboard(text);
+      if (ok) {
+        copyEncodeResultBtn.textContent = '已复制';
+        setTimeout(() => copyEncodeResultBtn.textContent = '复制结果', 1500);
+      }
+    });
+  }
+
+  if (clearEncodeBtn) {
+    clearEncodeBtn.addEventListener('click', () => {
+      if (encodeInputEl) encodeInputEl.value = '';
+      if (encodeOutputEl) encodeOutputEl.value = '';
+    });
+  }
+
+  // 自定义正则提取
+  const customRegexLabelEl = q('#customRegexLabel');
+  const customRegexPatternEl = q('#customRegexPattern');
+  const addCustomRegexBtn = q('#addCustomRegex');
+  const customRegexListEl = q('#customRegexList');
+
+  async function loadCustomRegexList() {
+    chrome.storage.local.get(['customRegexPatterns'], (result) => {
+      const patterns = result.customRegexPatterns || [];
+      customRegexListEl.innerHTML = '';
+
+      if (patterns.length === 0) {
+        const div = document.createElement('div');
+        div.className = 'pf-empty';
+        div.textContent = '暂无自定义规则';
+        customRegexListEl.appendChild(div);
+        return;
+      }
+
+      patterns.forEach(pattern => {
+        const div = document.createElement('div');
+        div.className = 'pf-card';
+        div.style.marginBottom = '10px';
+        div.style.padding = '10px';
+
+        const header = document.createElement('div');
+        header.style.display = 'flex';
+        header.style.justifyContent = 'space-between';
+        header.style.alignItems = 'center';
+        header.style.marginBottom = '8px';
+
+        const label = document.createElement('strong');
+        label.textContent = pattern.label;
+
+        const btnGroup = document.createElement('div');
+
+        const extractBtn = document.createElement('button');
+        extractBtn.className = 'pf-btn';
+        extractBtn.textContent = '提取';
+        extractBtn.style.fontSize = '12px';
+        extractBtn.style.padding = '4px 8px';
+        extractBtn.style.marginRight = '5px';
+
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'pf-btn';
+        deleteBtn.textContent = '删除';
+        deleteBtn.style.fontSize = '12px';
+        deleteBtn.style.padding = '4px 8px';
+
+        extractBtn.addEventListener('click', async () => {
+          try {
+            const tab = await getActiveTab();
+            const results = await execInTab(tab.id, (regexPattern) => {
+              try {
+                const regex = new RegExp(regexPattern, 'g');
+                const source = document.documentElement.outerHTML;
+                const matches = source.match(regex) || [];
+                return [...new Set(matches)];
+              } catch (e) {
+                return [];
+              }
+            }, [pattern.pattern]);
+
+            const items = results[0]?.result || [];
+            const resultDiv = div.querySelector('.custom-regex-result');
+            if (resultDiv) {
+              resultDiv.innerHTML = '';
+              if (items.length === 0) {
+                resultDiv.textContent = '未匹配到结果';
+              } else {
+                const ul = document.createElement('ul');
+                ul.className = 'pf-list';
+                items.forEach(item => {
+                  const li = document.createElement('li');
+                  li.className = 'pf-item';
+                  li.textContent = item;
+                  li.style.wordBreak = 'break-all';
+                  ul.appendChild(li);
+                });
+                resultDiv.appendChild(ul);
+              }
+            }
+          } catch (e) {
+            const resultDiv = div.querySelector('.custom-regex-result');
+            if (resultDiv) resultDiv.textContent = '提取失败';
+          }
+        });
+
+        deleteBtn.addEventListener('click', () => {
+          const filtered = patterns.filter(p => p.label !== pattern.label);
+          chrome.storage.local.set({ customRegexPatterns: filtered }, () => {
+            loadCustomRegexList();
+          });
+        });
+
+        btnGroup.appendChild(extractBtn);
+        btnGroup.appendChild(deleteBtn);
+        header.appendChild(label);
+        header.appendChild(btnGroup);
+
+        const patternDiv = document.createElement('div');
+        patternDiv.className = 'pf-item-secondary';
+        patternDiv.textContent = pattern.pattern;
+        patternDiv.style.marginBottom = '8px';
+        patternDiv.style.fontFamily = 'monospace';
+
+        const resultDiv = document.createElement('div');
+        resultDiv.className = 'custom-regex-result';
+        resultDiv.style.marginTop = '8px';
+        resultDiv.style.maxHeight = '150px';
+        resultDiv.style.overflowY = 'auto';
+
+        div.appendChild(header);
+        div.appendChild(patternDiv);
+        div.appendChild(resultDiv);
+        customRegexListEl.appendChild(div);
+      });
+    });
+  }
+
+  if (addCustomRegexBtn) {
+    addCustomRegexBtn.addEventListener('click', () => {
+      const label = customRegexLabelEl?.value?.trim();
+      const pattern = customRegexPatternEl?.value?.trim();
+
+      if (!label || !pattern) {
+        alert('请输入规则名称和正则表达式');
+        return;
+      }
+
+      try {
+        new RegExp(pattern);
+      } catch (e) {
+        alert('无效的正则表达式');
+        return;
+      }
+
+      chrome.storage.local.get(['customRegexPatterns'], (result) => {
+        const patterns = result.customRegexPatterns || [];
+        const existingIndex = patterns.findIndex(p => p.label === label);
+        if (existingIndex >= 0) {
+          patterns[existingIndex].pattern = pattern;
+        } else {
+          patterns.push({ label, pattern });
+        }
+        chrome.storage.local.set({ customRegexPatterns: patterns }, () => {
+          customRegexLabelEl.value = '';
+          customRegexPatternEl.value = '';
+          loadCustomRegexList();
+        });
+      });
+    });
+  }
+
+  // ============ 信息提取模块结束 ============
 });

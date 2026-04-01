@@ -150,31 +150,42 @@ body {
 /* 标签页 */
 .pf-tabs {
   display: flex;
-  gap: var(--spacing-sm);
-  padding: var(--spacing-sm) var(--spacing-md);
+  gap: var(--spacing-xs);
+  padding: var(--spacing-xs) var(--spacing-sm);
   overflow-x: auto;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
+  scrollbar-width: thin;
+  -ms-overflow-style: auto;
   background-color: var(--color-bg-secondary);
   border-bottom: 1px solid var(--color-border);
+  flex-wrap: nowrap;
 }
 
 .pf-tabs::-webkit-scrollbar {
-  display: none;
+  height: 4px;
+}
+
+.pf-tabs::-webkit-scrollbar-track {
+  background: var(--color-bg-tertiary);
+}
+
+.pf-tabs::-webkit-scrollbar-thumb {
+  background: var(--color-gray-400);
+  border-radius: 2px;
 }
 
 .pf-tab {
   appearance: none;
   border: none;
   background-color: transparent;
-  padding: var(--spacing-sm) var(--spacing-md);
-  font-size: var(--font-size-sm);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  font-size: var(--font-size-xs);
   font-weight: var(--font-weight-medium);
   color: var(--color-text-secondary);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-sm);
   cursor: pointer;
   transition: all var(--transition-normal);
   white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .pf-tab:hover {
@@ -1195,3 +1206,148 @@ body {
   color: var(--color-text-primary);
   font-weight: var(--font-weight-medium);
 }
+
+/* ============ 信息提取模块样式 ============ */
+
+/* 编码解码工具按钮组 */
+.pf-encoder-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-xs);
+  margin-top: var(--spacing-sm);
+}
+
+.pf-encoder-actions .pf-btn {
+  font-size: var(--font-size-xs);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  flex: 1;
+  min-width: 80px;
+}
+
+/* 信息提取结果列表 */
+#mod-info-extract .pf-list {
+  max-height: 200px;
+  overflow-y: auto;
+  margin-top: var(--spacing-sm);
+}
+
+#mod-info-extract .pf-item {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-bottom: 1px solid var(--color-border);
+  transition: background-color var(--transition-fast);
+}
+
+#mod-info-extract .pf-item:last-child {
+  border-bottom: none;
+}
+
+#mod-info-extract .pf-item:hover {
+  background-color: var(--color-bg-tertiary);
+}
+
+#mod-info-extract .pf-item-primary {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+  word-break: break-all;
+}
+
+/* 高亮样式 */
+#mod-info-extract .pf-item.highlight {
+  background-color: rgba(214, 158, 46, 0.15);
+  border-left: 3px solid var(--color-accent);
+}
+
+/* Map文件结果区域 */
+#mapResult {
+  margin-top: var(--spacing-sm);
+  padding: var(--spacing-sm);
+  background-color: var(--color-bg-tertiary);
+  border-radius: var(--radius-md);
+  min-height: 40px;
+}
+
+#mapResult .pf-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-sm);
+  margin-bottom: var(--spacing-xs);
+  background-color: var(--color-bg-secondary);
+  border-radius: var(--radius-sm);
+}
+
+/* 自定义正则规则卡片 */
+#customRegexList .pf-card {
+  margin-bottom: var(--spacing-sm);
+  padding: var(--spacing-md);
+  background-color: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+#customRegexList .pf-item-secondary {
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  background-color: var(--color-bg-tertiary);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--radius-sm);
+  word-break: break-all;
+}
+
+.custom-regex-result {
+  margin-top: var(--spacing-sm);
+  padding: var(--spacing-sm);
+  background-color: var(--color-bg-tertiary);
+  border-radius: var(--radius-sm);
+  max-height: 150px;
+  overflow-y: auto;
+}
+
+.custom-regex-result .pf-list {
+  margin: 0;
+}
+
+/* 暗色模式适配 - 信息提取模块 */
+@media (prefers-color-scheme: dark) {
+  #mod-info-extract .pf-item:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+  }
+
+  #mod-info-extract .pf-item.highlight {
+    background-color: rgba(214, 158, 46, 0.2);
+  }
+
+  #mapResult {
+    background-color: rgba(255, 255, 255, 0.05);
+  }
+
+  #mapResult .pf-item {
+    background-color: rgba(255, 255, 255, 0.03);
+  }
+
+  .custom-regex-result {
+    background-color: rgba(255, 255, 255, 0.05);
+  }
+
+  #customRegexList .pf-item-secondary {
+    background-color: rgba(255, 255, 255, 0.05);
+  }
+}
+
+/* 信息提取模块响应式 */
+@media (max-width: 720px) {
+  .pf-encoder-actions {
+    flex-direction: column;
+  }
+
+  .pf-encoder-actions .pf-btn {
+    width: 100%;
+  }
+
+  #mod-info-extract .pf-list {
+    max-height: 150px;
+  }
+}
+
+/* ============ 信息提取模块样式结束 ============ */

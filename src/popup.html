@@ -16,6 +16,7 @@
     </header>
     <nav class="pf-tabs">
       <button id="tab-info" class="pf-tab  pf-tab-active">信息收集</button>
+      <button id="tab-info-extract" class="pf-tab">信息提取</button>
       <button id="tab-xss" class="pf-tab">XSS测试</button>
       <button id="tab-sql" class="pf-tab">SQL 注入</button>
       <button id="tab-security" class="pf-tab">端点安全扫描</button>
@@ -302,6 +303,134 @@
         </div>
       </section>
 
+      <section id="mod-info-extract" class="pf-module pf-hidden">
+        <div class="pf-configs-title">信息提取工具</div>
+        <div class="pf-fuzz-grid">
+          <div class="pf-card">
+            <div class="pf-configs-title pf-configs-title-card">域名提取</div>
+            <div class="pf-card-body pf-fuzz-card-body">
+              <section class="pf-fuzz-actions">
+                <button id="extractDomain" class="pf-btn">提取域名</button>
+                <button id="copyDomain" class="pf-btn pf-hidden">复制</button>
+                <button id="exportDomain" class="pf-btn pf-hidden">导出JSON</button>
+              </section>
+              <ul id="domainList" class="pf-list"></ul>
+            </div>
+          </div>
+
+          <div class="pf-card">
+            <div class="pf-configs-title pf-configs-title-card">API 提取</div>
+            <div class="pf-card-body pf-fuzz-card-body">
+              <section class="pf-fuzz-actions">
+                <button id="extractApi" class="pf-btn">提取API</button>
+                <button id="copyApi" class="pf-btn pf-hidden">复制</button>
+                <button id="exportApi" class="pf-btn pf-hidden">导出JSON</button>
+              </section>
+              <ul id="apiList" class="pf-list"></ul>
+            </div>
+          </div>
+
+          <div class="pf-card">
+            <div class="pf-configs-title pf-configs-title-card">JS 文件提取</div>
+            <div class="pf-card-body pf-fuzz-card-body">
+              <section class="pf-fuzz-actions">
+                <button id="extractJs" class="pf-btn">提取JS</button>
+                <button id="copyJs" class="pf-btn pf-hidden">复制</button>
+                <button id="exportJs" class="pf-btn pf-hidden">导出JSON</button>
+              </section>
+              <div class="pf-field" style="margin-top: 10px;">
+                <div class="pf-field-label">高亮关键词（用逗号分隔）</div>
+                <input id="highlightKeywords" class="pf-input" type="text" placeholder="api,admin,config">
+              </div>
+              <ul id="jsList" class="pf-list"></ul>
+            </div>
+          </div>
+
+          <div class="pf-card">
+            <div class="pf-configs-title pf-configs-title-card">路径提取</div>
+            <div class="pf-card-body pf-fuzz-card-body">
+              <section class="pf-fuzz-actions">
+                <button id="extractPath" class="pf-btn">提取路径</button>
+                <button id="copyPath" class="pf-btn pf-hidden">复制</button>
+                <button id="exportPath" class="pf-btn pf-hidden">导出JSON</button>
+              </section>
+              <ul id="pathExtractList" class="pf-list"></ul>
+            </div>
+          </div>
+
+          <div class="pf-card pf-fuzz-grid-full">
+            <div class="pf-configs-title pf-configs-title-card">Cookie 提取</div>
+            <div class="pf-card-body pf-fuzz-card-body">
+              <section class="pf-fuzz-actions">
+                <button id="extractCookie" class="pf-btn">提取Cookie</button>
+                <button id="copyCookie" class="pf-btn pf-hidden">复制全部</button>
+              </section>
+              <ul id="cookieExtractList" class="pf-list"></ul>
+            </div>
+          </div>
+
+          <div class="pf-card pf-fuzz-grid-full">
+            <div class="pf-configs-title pf-configs-title-card">Map 文件提取</div>
+            <div class="pf-card-body pf-fuzz-card-body">
+              <section class="pf-fuzz-actions">
+                <button id="detectMap" class="pf-btn">检测Map文件</button>
+                <button id="clearMapHistory" class="pf-btn">清空历史</button>
+              </section>
+              <div id="mapResult" style="margin-top: 10px;"></div>
+              <div class="pf-configs-title" style="margin-top: 15px;">历史记录</div>
+              <ul id="mapHistoryList" class="pf-list"></ul>
+            </div>
+          </div>
+
+          <div class="pf-card pf-fuzz-grid-full">
+            <div class="pf-configs-title pf-configs-title-card">编码解码工具</div>
+            <div class="pf-card-body pf-fuzz-card-body">
+              <div class="pf-field">
+                <div class="pf-field-label">输入内容</div>
+                <textarea id="encodeInput" class="pf-textarea" rows="3" placeholder="输入要编码/解码的内容"></textarea>
+              </div>
+              <div class="pf-encoder-actions">
+                <button class="pf-btn encode-btn" data-type="url" data-action="encode">URL编码</button>
+                <button class="pf-btn encode-btn" data-type="url" data-action="decode">URL解码</button>
+                <button class="pf-btn encode-btn" data-type="base64" data-action="encode">Base64编码</button>
+                <button class="pf-btn encode-btn" data-type="base64" data-action="decode">Base64解码</button>
+                <button class="pf-btn encode-btn" data-type="unicode" data-action="encode">Unicode编码</button>
+                <button class="pf-btn encode-btn" data-type="unicode" data-action="decode">Unicode解码</button>
+              </div>
+              <div class="pf-field" style="margin-top: 10px;">
+                <div class="pf-field-label">结果</div>
+                <textarea id="encodeOutput" class="pf-textarea" rows="3" readonly placeholder="编码/解码结果"></textarea>
+              </div>
+              <section class="pf-actions">
+                <button id="copyEncodeResult" class="pf-btn">复制结果</button>
+                <button id="clearEncode" class="pf-btn">清空</button>
+              </section>
+            </div>
+          </div>
+
+          <div class="pf-card pf-fuzz-grid-full">
+            <div class="pf-configs-title pf-configs-title-card">自定义正则提取</div>
+            <div class="pf-card-body pf-fuzz-card-body">
+              <div class="pf-controls">
+                <div class="pf-field">
+                  <div class="pf-field-label">规则名称</div>
+                  <input id="customRegexLabel" class="pf-input" type="text" placeholder="例如：提取UUID">
+                </div>
+                <div class="pf-field">
+                  <div class="pf-field-label">正则表达式</div>
+                  <input id="customRegexPattern" class="pf-input" type="text" placeholder="例如：[0-9a-f]{8}-[0-9a-f]{4}">
+                </div>
+              </div>
+              <section class="pf-actions">
+                <button id="addCustomRegex" class="pf-btn">添加规则</button>
+              </section>
+              <div class="pf-configs-title" style="margin-top: 15px;">自定义规则列表</div>
+              <div id="customRegexList"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <section id="mod-tools" class="pf-module pf-hidden">
         <div class="pf-configs-title">Vue 快速检测</div>
         <div class="pf-card">
@@ -436,7 +565,7 @@
         <div class="pf-card">
           <div class="pf-card-body">
             <p class="pf-text-content">
-              作者：0x八月 2026即将毕业的菜鸡一枚，座右铭：“保持热爱，保持勇敢，做自己的讲述者”，欢迎交流学习。
+              作者：0x八月 若干段实习结束，秋招已OC，详细介绍请查看github主页简介(菜鸡一个)，享受最后的大学生活，座右铭：“人要有all in的勇气 也要有nice fold的能力”，欢迎各位使用插件的师傅能够提出意见和建议，一起交流学习。
             </p>
           </div>
         </div>
@@ -617,6 +746,10 @@
         </div>
       </section>
     </main>
+    <script src="modules/info-extractor.js"></script>
+    <script src="modules/encode-decode.js"></script>
+    <script src="modules/map-extractor.js"></script>
+    <script src="modules/custom-regex.js"></script>
     <script src="popup.js"></script>
   </body>
 </html>
