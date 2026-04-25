@@ -154,6 +154,299 @@ const execInTabMain = async (tabId, func, args) => {
   }
 };
 
+// VueCrack 完整检测逻辑 - 作为独立函数供 executeScript 使用
+const executeVueDetect = () => {
+  // 工具函数：广度优先查找 Vue 根实例
+  function findVueRoot(root, maxDepth = 1000) {
+    const queue = [{ node: root, depth: 0 }];
+    while (queue.length > 0) {
+      const { node, depth } = queue.shift();
+      if (depth > maxDepth) break;
+      
+      if (node.__vue_app__ || node.__vue__ || node._vnode) {
+        return node;
+      }
+      
+      if (node.nodeType === 1 && node.childNodes && node.childNodes.length > 0) {
+        for (let i = 0; i < node.childNodes.length; i++) {
+          queue.push({ node: node.childNodes[i], depth: depth + 1 });
+        }
+      }
+    }
+    return null;
+  }
+  
+  // 获取 Vue 版本
+  function getVueVersion(vueRoot) {
+    let version = '';
+    try {
+      if (vueRoot.__vue_app__) {
+        version = vueRoot.__vue_app__.version || '';
+      }
+      if (!version && vueRoot.__vue__ && vueRoot.__vue__.$options && vueRoot.__vue__.$options._base) {
+        version = vueRoot.__vue__.$options._base.version || '';
+      }
+      if (!version && window.Vue && window.Vue.version) {
+        version = window.Vue.version;
+      }
+      if (!version && window.__VUE_DEVTOOLS_GLOBAL_HOOK__ && window.__VUE_DEVTOOLS_GLOBAL_HOOK__.Vue) {
+        version = window.__VUE_DEVTOOLS_GLOBAL_HOOK__.Vue.version;
+      }
+    } catch (e) {}
+    return version || 'unknown';
+  }
+  
+  // 查找 Vue Router 实例
+  function findVueRouter(vueRoot) {
+    try {
+      if (vueRoot.__vue_app__) {
+        const app = vueRoot.__vue_app__;
+        if (app.config && app.config.globalProperties && app.config.globalProperties.$router) {
+          return app.config.globalProperties.$router;
+        }
+        if (app._instance) {
+          const instance = app._instance;
+          if (instance.appContext && instance.appContext.config && instance.appContext.config.globalProperties && instance.appContext.config.globalProperties.$router) {
+            return instance.appContext.config.globalProperties.$router;
+          }
+          if (instance.ctx && instance.ctx.$router) {
+            return instance.ctx.$router;
+          }
+        }
+      }
+      
+      if (vueRoot.__vue__) {
+        const vue = vueRoot.__vue__;
+        return vue.$router || 
+               (vue.$root && vue.$root.$router) ||
+               (vue.$root && vue.$root.$options && vue.$root.$options.router) ||
+               vue._router;
+      }
+    } catch (e) {
+      console.error('[VueDetect] findVueRouter error:', e);
+    }
+    return null;
+  }
+  
+  // 路径拼接
+  function joinPath(base, path) {
+    if (!path) return base || '/';
+    if (path.startsWith('/')) return path;
+    if (!base || base === '/') return '/' + path;
+    return (base.endsWith('/') ? base.slice(0, -1) : base) + '/' + path;
+  }
+  
+  // 判断 meta.auth 是否表示需要鉴权
+  function isAuthTrue(val) {
+    return val === true || val === 'true' || val === 1 || val === '1';
+  }
+  
+  // 提取 Router 基础路径
+  function extractRouterBase(router) {
+    try {
+      return router.options ? router.options.base : '' || 
+             router.history ? router.history.base : '';
+    } catch (e) {
+      return '';
+    }
+  }
+  
+  // 分析页面链接
+  function analyzePageLinks() {
+    const result = { detectedBasePath: '', commonPrefixes: [] };
+    try {
+      const links = Array.from(document.querySelectorAll('a[href]'))
+        .map(a => a.getAttribute('href'))
+        .filter(href => href && href.startsWith('/') && !href.startsWith('//') && !href.includes('.') && href.length > 1);
+      
+      if (links.length < 3) return result;
+      
+      const pathSegments = links.map(link => link.split('/').filter(Boolean));
+      const firstSegments = {};
+      
+      pathSegments.forEach(segments => {
+        if (segments.length > 0) {
+          const first = segments[0];
+          firstSegments[first] = (firstSegments[first] || 0) + 1;
+        }
+      });
+      
+      const sortedPrefixes = Object.entries(firstSegments)
+        .sort((a, b) => b[1] - a[1])
+        .map(entry => ({ prefix: entry[0], count: entry[1] }));
+      
+      result.commonPrefixes = sortedPrefixes;
+      
+      if (sortedPrefixes.length > 0 && sortedPrefixes[0].count / links.length > 0.6) {
+        result.detectedBasePath = '/' + sortedPrefixes[0].prefix;
+      }
+    } catch (e) {
+      console.error('[VueDetect] analyzePageLinks error:', e);
+    }
+    
+    return result;
+  }
+  
+  // 修改路由 meta auth 字段
+  function patchAllRouteAuth(router) {
+    const modified = [];
+    
+    function patchMeta(route) {
+      if (route.meta && typeof route.meta === 'object') {
+        Object.keys(route.meta).forEach(key => {
+          if (key.toLowerCase().includes('auth') && isAuthTrue(route.meta[key])) {
+            route.meta[key] = false;
+            modified.push({ path: route.path || '', name: route.name || '' });
+          }
+        });
+      }
+    }
+    
+    try {
+      if (typeof router.getRoutes === 'function') {
+        router.getRoutes().forEach(patchMeta);
+      } else if (router.options && Array.isArray(router.options.routes)) {
+        function walkRoutes(routes) {
+          if (!Array.isArray(routes)) return;
+          routes.forEach(route => {
+            patchMeta(route);
+            if (Array.isArray(route.children)) walkRoutes(route.children);
+          });
+        }
+        walkRoutes(router.options.routes);
+      } else if (router.matcher) {
+        if (typeof router.matcher.getRoutes === 'function') {
+          router.matcher.getRoutes().forEach(patchMeta);
+        }
+      }
+    } catch (e) {
+      console.error('[VueDetect] patchAllRouteAuth error:', e);
+    }
+    
+    return modified;
+  }
+  
+  // 清除路由守卫
+  function patchRouterGuards(router) {
+    try {
+      ['beforeEach', 'beforeResolve', 'afterEach'].forEach(hook => {
+        if (typeof router[hook] === 'function') {
+          router[hook] = () => {};
+        }
+      });
+      
+      ['beforeGuards', 'beforeResolveGuards', 'afterGuards', 'beforeHooks', 'resolveHooks', 'afterHooks']
+        .forEach(prop => {
+          if (Array.isArray(router[prop])) {
+            router[prop].length = 0;
+          }
+        });
+    } catch (e) {
+      console.error('[VueDetect] patchRouterGuards error:', e);
+    }
+  }
+  
+  // 数据序列化（避免循环引用）
+  function sanitizeRouteObject(obj) {
+    if (!obj || typeof obj !== 'object') return obj;
+    const sanitized = {};
+    for (const key in obj) {
+      if (obj.hasOwnProperty(key)) {
+        const value = obj[key];
+        if (value instanceof Function || value instanceof Promise) {
+          sanitized[key] = '[Function]';
+        } else if (typeof value === 'object' && value !== null) {
+          sanitized[key] = '[Object]';
+        } else {
+          sanitized[key] = value;
+        }
+      }
+    }
+    return sanitized;
+  }
+  
+  // 列出所有路由
+  function listAllRoutes(router) {
+    const list = [];
+    try {
+      if (typeof router.getRoutes === 'function') {
+        router.getRoutes().forEach(r => {
+          list.push({ 
+            name: r.name || '', 
+            path: r.path || '', 
+            meta: sanitizeRouteObject(r.meta || {}) 
+          });
+        });
+      } else if (router.options && Array.isArray(router.options.routes)) {
+        function traverse(routes, basePath = '') {
+          routes.forEach(r => {
+            const fullPath = joinPath(basePath, r.path);
+            list.push({ 
+              name: r.name || '', 
+              path: fullPath, 
+              meta: sanitizeRouteObject(r.meta || {}) 
+            });
+            if (Array.isArray(r.children)) traverse(r.children, fullPath);
+          });
+        }
+        traverse(router.options.routes);
+      } else if (router.matcher && typeof router.matcher.getRoutes === 'function') {
+        router.matcher.getRoutes().forEach(r => {
+          list.push({ name: r.name || '', path: r.path || '', meta: sanitizeRouteObject(r.meta || {}) });
+        });
+      } else if (router.history && router.history.current && Array.isArray(router.history.current.matched)) {
+        router.history.current.matched.forEach(r => {
+          list.push({ name: r.name || '', path: r.path || '', meta: sanitizeRouteObject(r.meta || {}) });
+        });
+      }
+    } catch (e) {
+      console.error('[VueDetect] listAllRoutes error:', e);
+    }
+    return list;
+  }
+  
+  // 主执行逻辑
+  const result = {
+    vueDetected: false,
+    vueVersion: null,
+    routerDetected: false,
+    modifiedRoutes: [],
+    allRoutes: [],
+    routerBase: '',
+    pageAnalysis: { detectedBasePath: '', commonPrefixes: [] },
+    error: null
+  };
+  
+  try {
+    const vueRoot = findVueRoot(document.body);
+    if (!vueRoot) {
+      result.error = '未检测到 Vue 实例';
+      return result;
+    }
+    
+    result.vueDetected = true;
+    result.vueVersion = getVueVersion(vueRoot);
+    
+    const router = findVueRouter(vueRoot);
+    if (!router) {
+      result.error = '未检测到 Vue Router 实例';
+      return result;
+    }
+    
+    result.routerDetected = true;
+    result.routerBase = extractRouterBase(router);
+    result.pageAnalysis = analyzePageLinks();
+    result.modifiedRoutes = patchAllRouteAuth(router);
+    patchRouterGuards(router);
+    result.allRoutes = listAllRoutes(router);
+    
+  } catch (e) {
+    result.error = e.toString();
+  }
+  
+  return result;
+};
+
 const parseHeaderLines = (text) => {
   const out = {};
   const raw = String(text || "");
@@ -2962,6 +3255,84 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   };
 
+  // 渲染 URL 列表，每个 URL 带复制和打开按钮
+  const renderVueUrlsList = (urls) => {
+    if (!vueDetectListEl) return;
+    vueDetectListEl.textContent = "";
+    
+    if (!urls || !urls.length) {
+      const li = document.createElement("li");
+      li.className = "pf-empty";
+      li.textContent = "无 URL";
+      vueDetectListEl.appendChild(li);
+      return;
+    }
+    
+    const headerLi = document.createElement("li");
+    headerLi.className = "pf-item pf-item-header";
+    headerLi.innerHTML = `
+      <div class="pf-item-primary">页面完整 URL 列表（${urls.length} 条）</div>
+    `;
+    vueDetectListEl.appendChild(headerLi);
+    
+    urls.forEach((url, index) => {
+      const li = document.createElement("li");
+      li.className = "pf-item pf-url-item";
+      
+      // 序号
+      const numSpan = document.createElement("span");
+      numSpan.textContent = `${index + 1}.`;
+      numSpan.className = "pf-url-num";
+      li.appendChild(numSpan);
+      
+      // URL 文本
+      const urlSpan = document.createElement("span");
+      urlSpan.textContent = url;
+      urlSpan.className = "pf-url-text";
+      urlSpan.title = url;
+      li.appendChild(urlSpan);
+      
+      // 复制按钮
+      const copyBtn = document.createElement("button");
+      copyBtn.className = "pf-btn pf-btn-sm";
+      copyBtn.textContent = "复制";
+      copyBtn.addEventListener("click", async () => {
+        try {
+          await navigator.clipboard.writeText(url);
+          copyBtn.textContent = "已复制";
+          copyBtn.classList.add("pf-btn-success");
+          setTimeout(() => {
+            copyBtn.textContent = "复制";
+            copyBtn.classList.remove("pf-btn-success");
+          }, 1500);
+        } catch (e) {
+          copyBtn.textContent = "失败";
+          setTimeout(() => {
+            copyBtn.textContent = "复制";
+          }, 1500);
+        }
+      });
+      li.appendChild(copyBtn);
+      
+      // 打开按钮
+      const openBtn = document.createElement("button");
+      openBtn.className = "pf-btn pf-btn-sm";
+      openBtn.textContent = "打开";
+      openBtn.addEventListener("click", () => {
+        chrome.tabs.create({ url, active: false });
+        openBtn.textContent = "已打开";
+        openBtn.classList.add("pf-btn-primary");
+        setTimeout(() => {
+          openBtn.textContent = "打开";
+          openBtn.classList.remove("pf-btn-primary");
+        }, 1500);
+      });
+      li.appendChild(openBtn);
+      
+      vueDetectListEl.appendChild(li);
+    });
+  };
+
   const setVueUrls = (urls) => {
     const text = Array.isArray(urls) ? urls.join("\n") : String(urls || "");
     state.vueUrls = text;
@@ -3001,91 +3372,120 @@ document.addEventListener("DOMContentLoaded", () => {
     return out;
   };
 
+  // Vue 检测 - 完整迁移 VueCrack 功能
   if (vueDetectBtn) {
     vueDetectBtn.addEventListener("click", async () => {
       try {
         setVueStatus("检测中...");
         const tab = await getActiveTab();
-        const res = await execInTabMain(tab.id, () => {
-          const findings = [];
-          const push = (k, v) => findings.push({ k: String(k || ""), v: String(v === undefined ? "" : v) });
-
-          // 仅保留两类版本检测结果：
-          // 1) Vue Version (DevTools App)
-          // 2) Vue Version (DOM Property)
-
-          // DevTools App 版本
-          try {
-            const hook = window.__VUE_DEVTOOLS_GLOBAL_HOOK__;
-            if (hook) {
-              const apps = [];
-              if (Array.isArray(hook.apps)) apps.push(...hook.apps);
-              else if (hook.apps && typeof hook.apps.forEach === "function") hook.apps.forEach((a) => apps.push(a));
-              if (Array.isArray(hook.appRecords)) hook.appRecords.forEach((r) => r && r.app && apps.push(r.app));
-
-              let devVer = "";
-              for (const app of apps) {
-                if (!app || typeof app !== "object") continue;
-                if (app.version) {
-                  devVer = app.version;
-                  break;
-                }
-                if (app.constructor && app.constructor.version) {
-                  devVer = app.constructor.version;
-                  break;
-                }
-                if (app.$options && app.$options._base && app.$options._base.version) {
-                  devVer = app.$options._base.version;
-                  break;
-                }
+        
+        // 使用 VueCrack 的完整检测逻辑
+        const res = await execInTabMain(tab.id, executeVueDetect);
+        
+        const out = res && res[0] && res[0].result ? res[0].result : null;
+        
+        if (!out) {
+          setVueStatus("检测失败");
+          return;
+        }
+        
+        // 显示检测结果
+        const findings = [];
+        let generatedUrls = [];
+        
+        if (out.vueDetected) {
+          findings.push({ k: "Vue Detected", v: "Yes" });
+          findings.push({ k: "Vue Version", v: out.vueVersion || "Unknown" });
+          
+          if (out.routerDetected) {
+            findings.push({ k: "Vue Router", v: "Detected" });
+            findings.push({ k: "Router Base", v: out.routerBase || "(none)" });
+            
+            if (out.pageAnalysis.detectedBasePath) {
+              findings.push({ k: "Detected Base Path", v: out.pageAnalysis.detectedBasePath });
+            }
+            
+            findings.push({ k: "Total Routes", v: out.allRoutes.length.toString() });
+            findings.push({ k: "Modified Auth Routes", v: out.modifiedRoutes.length.toString() });
+            
+            // 生成 URL 列表
+            const tabInfo = await getActiveTab();
+            const origin = (() => {
+              try {
+                const u = new URL(tabInfo.url || "");
+                if (u.origin && u.origin !== "null") return u.origin;
+                return `${u.protocol}//${u.host}`;
+              } catch (_) {
+                return "";
               }
-              if (devVer) push("Vue Version (DevTools App)", devVer);
-            }
-          } catch (_) {}
-
-          // DOM Property 版本
-          try {
-            const candidates = [
-              document.getElementById("app"),
-              document.querySelector("[data-v-app]"),
-              document.body,
-              document.documentElement
-            ].filter(Boolean);
-
-            if (document.body) {
-              Array.from(document.body.children).slice(0, 5).forEach((c) => candidates.push(c));
-            }
-
-            let domVersion = "";
-            for (const el of candidates) {
-              if (el && el.__vue_app__ && el.__vue_app__.version) {
-                domVersion = el.__vue_app__.version;
-                break;
+            })();
+            
+            // 判断 router mode
+            const routerModeRes = await execInTabMain(tab.id, () => {
+              try {
+                const vueRoot = document.querySelector('[__vue_app__]') || document.querySelector('[data-v-app]');
+                if (!vueRoot) return 'history';
+                if (vueRoot.__vue_app__) {
+                  const app = vueRoot.__vue_app__;
+                  const router = app.config?.globalProperties?.$router;
+                  if (router) return router.mode || 'history';
+                }
+                if (vueRoot.__vue__) {
+                  const vue = vueRoot.__vue__;
+                  const router = vue.$router;
+                  if (router) return router.mode || 'history';
+                }
+                return 'history';
+              } catch (e) {
+                return 'history';
               }
-              if (
-                el &&
-                el.__vue__ &&
-                el.__vue__.$options &&
-                el.__vue__.$options._base &&
-                el.__vue__.$options._base.version
-              ) {
-                domVersion = el.__vue__.$options._base.version;
-                break;
-              }
-            }
-            if (domVersion) {
-              push("Vue Version (DOM Property)", domVersion);
-            }
-          } catch (_) {}
-
-          return { findings };
-        });
-        const out = res && res[0] && res[0].result ? res[0].result : { findings: [] };
-        renderVueFindings(out.findings || []);
-        setVueStatus(`完成：${(out.findings || []).length} 条线索`);
+            });
+            const mode = (routerModeRes && routerModeRes[0] && routerModeRes[0].result) ? routerModeRes[0].result : 'history';
+            
+            // 从所有路由生成 URL
+            const paths = out.allRoutes
+              .map(r => r.path)
+              .filter(p => p && p.trim() && p.trim() !== '*' && !p.includes('*'))
+              .map(p => {
+                // 移除动态参数 :param
+                return p.replace(/:\w+/g, 'PARAM').replace(/\/+/g, '/');
+              });
+            
+            const uniquePaths = [...new Set(paths)];
+            generatedUrls = buildAbsoluteUrls(origin, mode, uniquePaths);
+            
+            // 添加路由列表信息
+            findings.push({ k: "Router Mode", v: mode });
+            findings.push({ k: "Generated URLs", v: generatedUrls.length.toString() });
+          } else {
+            findings.push({ k: "Vue Router", v: "Not Detected" });
+          }
+        } else {
+          findings.push({ k: "Vue", v: "Not Detected" });
+        }
+        
+        if (out.error) {
+          findings.push({ k: "Error", v: out.error });
+        }
+        
+        renderVueFindings(findings);
+        
+        // 显示生成的 URL 列表
+        if (generatedUrls.length > 0) {
+          // 在 textarea 中显示 URL 列表
+          setVueUrls(generatedUrls);
+          
+          // 在检测结果区域显示 URL 列表（带复制和打开按钮）
+          setTimeout(() => renderVueUrlsList(generatedUrls), 100);
+          
+          setVueStatus(out.vueDetected ? "检测成功" : "未检测到 Vue");
+        } else {
+          setVueStatus(out.vueDetected ? "检测成功" : "未检测到 Vue");
+        }
+        
       } catch (e) {
         renderVueFindings([]);
-        setVueStatus(`失败：${e && e.message ? e.message : "unknown"}`);
+        setVueStatus(`失败：${e.message || "unknown"}`);
       }
     });
   }
@@ -3220,6 +3620,10 @@ document.addEventListener("DOMContentLoaded", () => {
         const paths = uniqueLines(out.paths || []).filter((p) => String(p || "").trim() && String(p || "").trim() !== "*");
         const absUrls = uniqueLines(buildAbsoluteUrls(origin, mode, paths));
         setVueUrls(absUrls);
+        
+        // 在检测结果区域显示 URL 列表（带复制和打开按钮）
+        renderVueUrlsList(absUrls);
+        
         setVueStatus(`完成：${absUrls.length} 条 URL（mode=${mode}）`);
       } catch (e) {
         setVueUrls("");
@@ -3963,7 +4367,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }, 0);
   }
 
-  // 域名提取
+  // 域名提取 - 使用增强版模块
   const extractDomainBtn = q('#extractDomain');
   const copyDomainBtn = q('#copyDomain');
   const exportDomainBtn = q('#exportDomain');
@@ -3974,11 +4378,28 @@ document.addEventListener("DOMContentLoaded", () => {
     extractDomainBtn.addEventListener('click', async () => {
       try {
         const tab = await getActiveTab();
+        // 使用 info-extractor-enhanced.js 中的提取函数
         const results = await execInTab(tab.id, () => {
-          const regex = /[a-zA-Z0-9\-\.]*?\.(?:xin|com|cn|net|com\.cn|vip|top|cc|shop|club|wang|xyz|luxe|site|news|pub|fun|online|win|red|loan|ren|mom|net\.cn|org|link|biz|bid|help|tech|date|mobi|so|me|tv|co|vc|pw|video|party|pics|website|store|ltd|ink|trade|live|wiki|space|gift|lol|work|band|info|click|photo|market|tel|social|press|game|kim|org\.cn|games|pro|men|love|studio|rocks|asia|group|science|design|software|engineer|lawyer|fit|beer)/gi;
+          // 更精确的域名正则，减少误报
+          const regex = /\b(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+(?:com|cn|net|com\.cn|vip|top|cc|shop|club|wang|xyz|luxe|site|news|pub|fun|online|win|red|loan|ren|mom|org|link|biz|bid|help|tech|date|mobi|so|me|tv|co|vc|pw|video|party|pics|website|store|ltd|ink|trade|live|wiki|space|gift|lol|work|band|info|click|photo|market|tel|social|press|game|kim|games|pro|men|love|studio|rocks|asia|group|science|design|software|engineer|lawyer|fit|beer|io|dev|app|cloud|ai)\b/gi;
           const source = document.documentElement.outerHTML;
           const matches = source.match(regex) || [];
-          return [...new Set(matches)];
+          
+          // 过滤误报
+          const filtered = matches.filter(domain => {
+            const d = domain.toLowerCase();
+            // 排除看起来像路径的
+            if (d.includes('/')) return false;
+            // 排除文件名扩展名
+            if (['.js', '.css', '.png', '.jpg', '.gif', '.svg', '.ico', '.woff', '.ttf', '.pdf'].some(ext => d.endsWith(ext))) return false;
+            // 排除过短的
+            if (d.length < 5) return false;
+            // 排除连续数字
+            if (/^\d+\.\d+\.\d+$/.test(d)) return false;
+            return true;
+          });
+          
+          return [...new Set(filtered)];
         });
         domainResults = results[0]?.result || [];
         renderExtractList(domainListEl, domainResults);
@@ -4020,10 +4441,37 @@ document.addEventListener("DOMContentLoaded", () => {
         const tab = await getActiveTab();
         const results = await execInTab(tab.id, () => {
           const source = document.documentElement.outerHTML;
-          const urlRegex = /https?:\/\/[^\s/$.?#].[^\s]*/g;
-          const staticRegex = /\.(jpg|jpeg|png|gif|css|js|ico|svg|woff|woff2|ttf|eot|pdf|doc|docx|xls|xlsx|zip|rar|tar|gz|mp3|mp4|avi|mov)$/i;
+          const urlRegex = /https?:\/\/[^\s"'>)]+/g;
+          // 排除的静态资源扩展名
+          const staticExtensions = [
+            'jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'ico', 'svg',
+            'css', 'scss', 'less',
+            'js', 'jsx', 'ts', 'tsx',
+            'woff', 'woff2', 'ttf', 'otf', 'eot',
+            'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx',
+            'zip', 'rar', 'tar', 'gz', '7z',
+            'mp3', 'mp4', 'avi', 'mov', 'wmv', 'flv', 'webm', 'm4a'
+          ];
+          
           const matches = source.match(urlRegex) || [];
-          return [...new Set(matches.filter(url => !staticRegex.test(url)))];
+          
+          // 增强过滤逻辑
+          const filtered = matches.filter(url => {
+            const u = url.toLowerCase();
+            // 排除静态资源
+            if (staticExtensions.some(ext => u.includes('.' + ext) || u.endsWith('.' + ext))) return false;
+            // 排除常见 CDN 和资源站点
+            if (u.includes('googleapis.com') || u.includes('gstatic.com') || 
+                u.includes('googletagmanager.com') || u.includes('analytics.google.com')) return false;
+            // 排除静态目录
+            if (u.includes('/static/') || u.includes('/assets/') || u.includes('/images/') || 
+                u.includes('/img/') || u.includes('/css/') || u.includes('/fonts/')) return false;
+            // 保留 API 特征
+            return u.includes('/api/') || u.includes('/v') || 
+                   u.includes('?') || (url.match(/\//g) || []).length >= 3;
+          });
+          
+          return [...new Set(filtered)];
         });
         apiResults = results[0]?.result || [];
         renderExtractList(apiListEl, apiResults);
@@ -4066,22 +4514,36 @@ document.addEventListener("DOMContentLoaded", () => {
         const tab = await getActiveTab();
         const results = await execInTab(tab.id, () => {
           const jsFiles = [];
+          const seen = new Set();
           const scripts = document.getElementsByTagName('script');
+          
           for (const script of scripts) {
             const src = script.getAttribute('src');
-            if (src && src.endsWith('.js')) {
+            if (src && src.endsWith('.js') && !src.endsWith('.map')) {
+              let fullPath;
               if (src.startsWith('http')) {
-                jsFiles.push(src);
+                fullPath = src;
               } else if (src.startsWith('//')) {
-                jsFiles.push(window.location.protocol + src);
+                fullPath = window.location.protocol + src;
               } else if (src.startsWith('/')) {
-                jsFiles.push(window.location.protocol + '//' + window.location.host + src);
+                fullPath = window.location.protocol + '//' + window.location.host + src;
               } else {
                 const base = window.location.href.substring(0, window.location.href.lastIndexOf('/') + 1);
-                jsFiles.push(base + src);
+                fullPath = base + src;
+              }
+              
+              // 过滤掉 webpack 运行时和明显不是业务代码的 JS
+              if (!fullPath.includes('webpack/bootstrap') && 
+                  !fullPath.includes('webpack/runtime') &&
+                  !fullPath.includes('hot-update.js')) {
+                if (!seen.has(fullPath)) {
+                  seen.add(fullPath);
+                  jsFiles.push(fullPath);
+                }
               }
             }
           }
+          
           return [...new Set(jsFiles)];
         });
         jsResults = results[0]?.result || [];
@@ -4127,7 +4589,30 @@ document.addEventListener("DOMContentLoaded", () => {
           const source = document.documentElement.outerHTML;
           const pathRegex = /(?:\/[a-zA-Z0-9\-._~:/?#\[\]@!$&'()*+,;=]+)+/g;
           const matches = source.match(pathRegex) || [];
-          return [...new Set(matches)];
+          
+          // 排除静态资源和无效路径
+          const staticExtensions = [
+            'jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'ico', 'svg',
+            'css', 'scss', 'less', 'js', 'jsx', 'ts', 'tsx',
+            'woff', 'woff2', 'ttf', 'otf', 'eot',
+            'pdf', 'doc', 'docx', 'xls', 'xlsx', 'zip', 'rar',
+            'mp3', 'mp4', 'avi', 'mov', 'flv', 'webm'
+          ];
+          
+          const filtered = matches.filter(path => {
+            const p = path.toLowerCase();
+            // 排除过短的路径
+            if (p.length < 3) return false;
+            // 排除静态资源
+            if (staticExtensions.some(ext => p.includes('.' + ext) || p.endsWith('.' + ext))) return false;
+            // 排除看起来像域名的
+            if (p.startsWith('//') || p.includes('://')) return false;
+            // 排除包含连续数字的路径（可能是乱码）
+            if (/\/\d{8,}\//.test(p)) return false;
+            return true;
+          });
+          
+          return [...new Set(filtered)];
         });
         pathResults = results[0]?.result || [];
         renderExtractList(pathExtractListEl, pathResults);

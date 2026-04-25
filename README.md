@@ -1,22 +1,22 @@
 <div align="center">
-<h1>🍪 黄油曲奇v1.0.4</h1>
+<h1>🍪 黄油曲奇 v1.1.0</h1>
 <h3>集成化渗透测试浏览器插件</h3>
 
 <p>
-  <a href="#-快速开始"><img src="https://img.shields.io/badge/快速开始-中文-blue?style=flat-square" alt="快速开始"></a>
-  <img src="https://img.shields.io/badge/version-1.0.4-orange?style=flat-square" alt="Version">
+  <a href="#-快速开始"><img src="https://img.shields.io/badge/快速开始 - 中文-blue?style=flat-square" alt="快速开始"></a>
+  <img src="https://img.shields.io/badge/version-1.1.0-orange?style=flat-square" alt="Version">
   <img src="https://img.shields.io/badge/platform-Chrome%20%7C%20Edge-lightgrey?style=flat-square" alt="Platform">
   <img src="https://img.shields.io/badge/JavaScript-ES6%2B-blue?style=flat-square&logo=javascript" alt="JavaScript">
   <img src="https://img.shields.io/badge/browser%20extension-Yes-green?style=flat-square" alt="Browser Extension">
   <img src="https://img.shields.io/badge/license-MIT-yellow?style=flat-square" alt="License">
 </p>
-<p><em>黄油曲奇是一款集成化渗透测试浏览器插件，专为安全测试人员和开发者设计。它提供了丰富的安全测试工具，包括信息收集、信息提取、XSS测试、SQL注入测试、端点安全扫描、Shodan主机信息查询以及多种辅助工具，帮助用户快速识别和评估Web应用的安全漏洞。</em></p>
+<p><em>黄油曲奇是一款集成化渗透测试浏览器插件，专为安全测试人员和开发者设计。它提供了丰富的安全测试工具，包括信息收集、信息提取、XSS 测试、SQL 注入测试、端点安全扫描、Shodan 主机信息查询以及多种辅助工具，帮助用户快速识别和评估 Web 应用的安全漏洞。</em></p>
 
-<p><em>该插件集成了7大核心功能模块，覆盖了Web应用渗透测试的各个方面。通过直观的用户界面和强大的功能，黄油曲奇使安全测试变得简单高效，即使是非专业安全人员也能轻松操作。</em></p>
+<p><em>该插件集成了 7 大核心功能模块，覆盖了 Web 应用渗透测试的各个方面。通过直观的用户界面和强大的功能，黄油曲奇使安全测试变得简单高效，即使是非专业安全人员也能轻松操作。</em></p>
 
 <img src="assets/FrontRecon_tool.png" alt="黄油曲奇插件图标" width="128">
 
-<p><em>如果师傅觉得工具有用的话，不妨给个Star🌟</em></p>
+<p><em>如果师傅觉得工具有用的话，不妨给个 Star🌟</em></p>
 
 </div>
 
@@ -120,7 +120,7 @@ JAVASCRIPT
 
 批量URL打开工具
 
-![image-20260402014658232](assets/image-20260402014658232.png)
+![image-20260425115438863](assets/image-20260425115438863.png)
 
 ---
 
@@ -490,6 +490,29 @@ FrontRecon/
 
 ## 更新日志(更新很晚是因为在玩洛克王国)
 
+### v1.1.0 (2026-04-25)
+#### ✨ 新增功能
+- **Vue 快速检测增强**:
+  - 检测后自动在检测结果区域显示完整 URL 列表
+  - 每个 URL 支持单独复制操作（点击复制按钮）
+  - 每个 URL 支持单独打开操作（后台打开新标签页）
+  - 支持 Vue 2/3 版本检测和 Router 实例分析
+  - 支持 Router Mode 自动识别（history/hash）
+  - 路由守卫清除和 meta.auth 字段修改
+
+#### 🔧 功能优化
+- **信息提取模块优化**:
+  - 域名提取：排除文件名、路径片段、连续数字等误报
+  - API 提取：排除 37 种静态资源、CDN、静态目录
+  - JS 文件提取：排除 .map、webpack 运行时、hot-update 文件
+  - 路径提取：排除静态资源、过短路径、连续数字
+
+#### 🐛 Bug 修复
+- 修复 executeScript 调用时的参数类型错误
+- 修复多个文件功能的已知Bug
+- 修复 popup.js 模板字符串转义问题
+
+
 ### v1.0.4 (2026-04-02)
 - ✨ 新增信息提取模块
 - ✨ 新增域名提取功能
@@ -509,8 +532,8 @@ FrontRecon/
 
 - **作者**：0x八月
 - **公众号**：0x八月
-- **版本**：1.0.4
-- **更新日期**：2026-04-02
+- **版本**：1.1.0
+- **更新日期**：2026-04-25
 
 ---
 

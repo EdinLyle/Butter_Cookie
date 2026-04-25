@@ -421,6 +421,54 @@ body {
   line-height: var(--line-height-normal);
 }
 
+/* Vue URL 列表样式 */
+.pf-url-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px var(--spacing-md);
+  cursor: default;
+}
+
+.pf-url-item:hover {
+  background-color: var(--color-bg-tertiary);
+  transform: none;
+}
+
+.pf-url-num {
+  min-width: 30px;
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.pf-url-text {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-primary);
+}
+
+.pf-btn-sm {
+  padding: 4px 8px;
+  font-size: var(--font-size-xs);
+  min-width: 50px;
+  border-radius: var(--radius-sm);
+}
+
+.pf-btn-success {
+  background-color: var(--color-success) !important;
+  color: white !important;
+}
+
+.pf-btn-primary {
+  background-color: var(--color-primary) !important;
+  color: white !important;
+}
+
 /* 卡片 */
 .pf-card {
   background-color: var(--color-bg-secondary);

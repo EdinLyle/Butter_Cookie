@@ -3,17 +3,34 @@
 const regexPatterns = {
   IP: /\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b/g,
   IP_PORT: /\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?):[0-9]{1,5}\b/g,
-  域名: /[a-zA-Z0-9\-\.]*?\.(?:xin|com|cn|net|com\.cn|vip|top|cc|shop|club|wang|xyz|luxe|site|news|pub|fun|online|win|red|loan|ren|mom|net\.cn|org|link|biz|bid|help|tech|date|mobi|so|me|tv|co|vc|pw|video|party|pics|website|store|ltd|ink|trade|live|wiki|space|gift|lol|work|band|info|click|photo|market|tel|social|press|game|kim|org\.cn|games|pro|men|love|studio|rocks|asia|group|science|design|software|engineer|lawyer|fit|beer)/gi,
-  手机号: /[^\w]((?:(?:\+|00)86)?1(?:(?:3[\d])|(?:4[5-79])|(?:5[0-35-9])|(?:6[5-7])|(?:7[0-8])|(?:8[\d])|(?:9[189]))\d{8})[^\w]/g,
-  邮箱: /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g,
+  Domain: /[a-zA-Z0-9\-\.]*?\.(?:xin|com|cn|net|com\.cn|vip|top|cc|shop|club|wang|xyz|luxe|site|news|pub|fun|online|win|red|loan|ren|mom|net\.cn|org|link|biz|bid|help|tech|date|mobi|so|me|tv|co|vc|pw|video|party|pics|website|store|ltd|ink|trade|live|wiki|space|gift|lol|work|band|info|click|photo|market|tel|social|press|game|kim|org\.cn|games|pro|men|love|studio|rocks|asia|group|science|design|software|engineer|lawyer|fit|beer)/gi,
+  Phone: /[^\w]((?:(?:\+|00)86)?1(?:(?:3[\d])|(?:4[5-79])|(?:5[0-35-9])|(?:6[5-7])|(?:7[0-8])|(?:8[\d])|(?:9[189]))\d{8})[^\w]/g,
+  Landline: /(?:0\d{2,3}[- ]?)?\d{7,8}/g,
+  '400Phone': /400[- ]?\d{3,4}[- ]?\d{3,4}/g,
+  Email: /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g,
   JWT: /[A-Za-z0-9-_=]+\.[A-Za-z0-9-_=]+\.?[A-Za-z0-9-_.+/=]*/g,
-  算法: /(sha1|sha256|md5|aes)/gi,
+  Algorithm: /(sha1|sha256|md5|aes)/gi,
   Secret: /\b(secret|key|token|password)\b/gi,
   Path: /(?:\/[a-zA-Z0-9\-._~:/?#\[\]@!$&'()*+,;=]+)+/g,
-  JS文件路径: /(?:<script[^>]+src=["']([^"']+\.js)["']|["']([^"']+\.js)["'])/gi,
+  JSFilePath: /(?:<script[^>]+src=["']([^"']+\.js)["']|["']([^"']+\.js)["'])/gi,
   IncompletePath: /\/[^\s?#]*$/g,
   Url: /https?:\/\/[^\s/$.?#].[^\s]*/g,
-  StaticUrl: /\.(jpg|jpeg|png|gif|css|js|ico|svg)$/gi
+  StaticUrl: /\.(jpg|jpeg|png|gif|css|js|ico|svg)$/gi,
+  // 新增敏感信息检测
+  IDCard: /\b[1-9]\d{5}(18|19|20)\d{2}(0[1-9]|1[0-2])([0-2]\d|3[01])\d{3}[\dXx]\b/g,
+  AWS_Key: /\b(A3T[A-Z0-9]|AKIA|AGPA|AIDA|AROA|AIPA|ANPA|ANVA|ASIA)[A-Z0-9]{16}\b/g,
+  AWS_Secret: /\b([A-Za-z0-9+/]{40})(?=(?:[^A-Za-z0-9+/]|$))\b/g,
+  GitHub_Token: /\b(ghp_[a-zA-Z0-9]{36}|github_pat_[a-zA-Z0-9]{22}_[a-zA-Z0-9]{59})\b/g,
+  GitHub_PAT: /\b(github_pat_[a-zA-Z0-9]{22}_[a-zA-Z0-9]{59})\b/g,
+  BaiduMapKey: /webapi\.amap\.com|apis\.map\.qq\.com|api\.map\.baidu\.com|map\.qq\.com|restapi\.amap\.com/g,
+  AliyunKey: /(LTAI[A-Za-z0-9]{12,20})/g,
+  TencentKey: /(AKID[A-Za-z0-9]{13,20})/g,
+  CryptoPrivate: /\b([a-zA-Z0-9]{32,64})\b/g,
+  AuthInfo: /((basic [a-z0-9=:_\+\/-]{5,100})|(bearer [a-z0-9_.=:_\+\/-]{5,100}))/gi,
+  cryptoPrivate: /\b(private[_\-]?key|priv[_\-]?key)\b/gi,
+  database: /\b(mongodb|mysql|postgresql|redis|sqlite):\/\/[^\s"'<>]+/gi,
+  webhook: /https:\/\/(?:hooks\.slack\.com|discord(?:app)?\.com\/api\/webhooks)\/[^\s"'<>]+/gi,
+  stripeKey: /\b(sk_live_[a-zA-Z0-9]{24}|rk_live_[a-zA-Z0-9]{24})\b/g
 };
 
 let pageSource = '';
@@ -52,16 +69,16 @@ function dealUrl(u) {
 }
 
 function extractDomains() {
-  return collectInfo(regexPatterns.域名);
+  return collectInfo(regexPatterns.Domain);
 }
 
 function extractPhones() {
-  const phones = collectInfo(regexPatterns.手机号);
+  const phones = collectInfo(regexPatterns.Phone);
   return phones.map(p => p.replace(/[^\d+]/g, ''));
 }
 
 function extractEmails() {
-  return collectInfo(regexPatterns.邮箱);
+  return collectInfo(regexPatterns.Email);
 }
 
 function extractIPs() {
@@ -82,7 +99,7 @@ function extractApis() {
 }
 
 function extractJsFiles() {
-  const rawJsPaths = collectInfo(regexPatterns['JS文件路径']);
+  const rawJsPaths = collectInfo(regexPatterns.JSFilePath);
   const jsFiles = [];
   
   rawJsPaths.forEach(text => {
@@ -96,7 +113,7 @@ function extractJsFiles() {
     }
   });
   
-  // 同时从script标签中提取
+  // 同时从 script 标签中提取
   if (typeof document !== 'undefined') {
     const scripts = document.getElementsByTagName('script');
     for (const script of scripts) {
@@ -116,6 +133,63 @@ function extractJWTs() {
 
 function extractSecrets() {
   return collectInfo(regexPatterns.Secret);
+}
+
+// 新增敏感信息提取函数
+function extractIDCards() {
+  return collectInfo(regexPatterns.IDCard);
+}
+
+function extractAWSKeys() {
+  return collectInfo(regexPatterns.AWS_Key);
+}
+
+function extractAWSSecrets() {
+  return collectInfo(regexPatterns.AWS_Secret);
+}
+
+function extractGitHubTokens() {
+  return collectInfo(regexPatterns.GitHub_Token);
+}
+
+function extractBaiduMapKeys() {
+  return collectInfo(regexPatterns.BaiduMapKey);
+}
+
+function extractAliyunKeys() {
+  return collectInfo(regexPatterns.AliyunKey);
+}
+
+function extractTencentKeys() {
+  return collectInfo(regexPatterns.TencentKey);
+}
+
+function extractAuthTokens() {
+  return collectInfo(regexPatterns.AuthInfo);
+}
+
+function extractDatabaseUrls() {
+  return collectInfo(regexPatterns.database);
+}
+
+function extractWebhooks() {
+  return collectInfo(regexPatterns.webhook);
+}
+
+function extractStripeKeys() {
+  return collectInfo(regexPatterns.stripeKey);
+}
+
+function extractPrivateKeys() {
+  return collectInfo(regexPatterns.cryptoPrivate);
+}
+
+function extractFixedPhones() {
+  return collectInfo(regexPatterns.Landline);
+}
+
+function extract400Phones() {
+  return collectInfo(regexPatterns['400Phone']);
 }
 
 // 使用自定义正则提取
@@ -153,6 +227,21 @@ if (typeof module !== 'undefined' && module.exports) {
     extractJWTs,
     extractSecrets,
     extractWithCustomRegex,
-    refreshPageSource
+    refreshPageSource,
+    // 新增导出函数
+    extractIDCards,
+    extractAWSKeys,
+    extractAWSSecrets,
+    extractGitHubTokens,
+    extractBaiduMapKeys,
+    extractAliyunKeys,
+    extractTencentKeys,
+    extractAuthTokens,
+    extractDatabaseUrls,
+    extractWebhooks,
+    extractStripeKeys,
+    extractPrivateKeys,
+    extractFixedPhones,
+    extract400Phones
   };
 }

