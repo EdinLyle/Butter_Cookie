@@ -1,7 +1,7 @@
 {
   "name": "🍪 黄油曲奇",
   "description": "集成化渗透测试浏览器插件",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "manifest_version": 3,
   "permissions": ["activeTab", "scripting", "webRequest", "cookies", "contentSettings", "declarativeNetRequest", "storage", "tabs", "contextMenus", "downloads"],
   "host_permissions": ["<all_urls>"],
@@ -16,5 +16,17 @@
   },
   "icons": {
     "128": "assets/FrontRecon_tool.png"
-  }
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["src/content.js"],
+      "run_at": "document_end"
+    },
+    {
+      "matches": ["<all_urls>"],
+      "js": ["src/content_scripts/cloud-storage-scanner.js"],
+      "run_at": "document_end"
+    }
+  ]
 }

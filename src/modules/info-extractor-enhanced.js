@@ -1,7 +1,7 @@
 // 信息提取核心模块 - 从页面源码中提取各类信息（增强版）
 // 改进：优化正则表达式、添加上下文来源、增强过滤逻辑、减少脏数据
 
-const regexPatterns = {
+const extractedPatterns = {
   // 基础信息
   IP: /\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b/g,
   IP_PORT: /\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?):[0-9]{1,5}\b/g,
@@ -87,22 +87,22 @@ const STATIC_EXTENSIONS = [
   'swf', 'fla'
 ];
 
-let pageSource = '';
+let enhancedPageSource = '';
 let sourceMap = new Map(); // 存储匹配结果的来源位置
 
 // 初始化页面源码（带位置信息）
 function initPageSource() {
   if (typeof document !== 'undefined') {
-    pageSource = document.documentElement.outerHTML;
+    enhancedPageSource = document.documentElement.outerHTML;
     buildSourceMap();
   }
-  return pageSource;
+  return enhancedPageSource;
 }
 
 // 构建来源位置映射
 function buildSourceMap() {
   sourceMap.clear();
-  const lines = pageSource.split('\n');
+  const lines = enhancedPageSource.split('\n');
   let currentPosition = 0;
   
   lines.forEach((line, lineIndex) => {
@@ -136,14 +136,14 @@ function findContext(position, contextLength = 50) {
 
 // 增强的信息收集（带来源信息）
 function collectInfo(pattern, includeContext = false) {
-  if (!pageSource) {
+  if (!enhancedPageSource) {
     initPageSource();
   }
   
   const matches = [];
   const matchPositions = new Map(); // 用于去重
   
-  for (const match of pageSource.matchAll(pattern)) {
+  for (const match of enhancedPageSource.matchAll(pattern)) {
     const value = match[0];
     const position = match.index;
     
@@ -172,13 +172,13 @@ function collectInfo(pattern, includeContext = false) {
 
 // 简单的信息收集（保持兼容性）
 function collectInfoSimple(pattern) {
-  if (!pageSource) {
+  if (!enhancedPageSource) {
     initPageSource();
   }
   const matchPositions = new Map();
   const result = [];
   
-  for (const match of pageSource.matchAll(pattern)) {
+  for (const match of enhancedPageSource.matchAll(pattern)) {
     const value = match[0];
     if (!matchPositions.has(value)) {
       matchPositions.set(value, match.index);
@@ -211,7 +211,7 @@ function dealUrl(u, baseUrl = null) {
 // 提取函数（返回带上下文的对象）
 // 优化：过滤无效域名（如文件名、路径片段）
 function extractDomains(includeContext = false) {
-  const results = collectInfo(regexPatterns.Domain, includeContext);
+  const results = collectInfo(extractedPatterns.Domain, includeContext);
   // 过滤掉看起来像文件名或路径的假域名
   return results.filter(r => {
     const value = r.value.toLowerCase();
@@ -227,7 +227,7 @@ function extractDomains(includeContext = false) {
 }
 
 function extractPhones(includeContext = false) {
-  const results = collectInfo(regexPatterns.Phone, includeContext);
+  const results = collectInfo(extractedPatterns.Phone, includeContext);
   return results.map(r => ({
     ...r,
     value: r.value.replace(/[^\d+]/g, '')
@@ -235,20 +235,20 @@ function extractPhones(includeContext = false) {
 }
 
 function extractEmails(includeContext = false) {
-  return collectInfo(regexPatterns.Email, includeContext);
+  return collectInfo(extractedPatterns.Email, includeContext);
 }
 
 function extractIPs(includeContext = false) {
-  return collectInfo(regexPatterns.IP, includeContext);
+  return collectInfo(extractedPatterns.IP, includeContext);
 }
 
 function extractPrivateIPs(includeContext = false) {
-  return collectInfo(regexPatterns.PrivateIP, includeContext);
+  return collectInfo(extractedPatterns.PrivateIP, includeContext);
 }
 
 // 优化：排除静态资源和明显的非路径内容
 function extractPaths(includeContext = false) {
-  const results = collectInfo(regexPatterns.Path, includeContext);
+  const results = collectInfo(extractedPatterns.Path, includeContext);
   return results.filter(r => {
     const path = r.value;
     // 排除过短的路径
@@ -264,12 +264,12 @@ function extractPaths(includeContext = false) {
 }
 
 function extractUrls(includeContext = false) {
-  return collectInfo(regexPatterns.Url, includeContext);
+  return collectInfo(extractedPatterns.Url, includeContext);
 }
 
 // 优化：排除静态资源、图片、文件下载等
 function extractApis(includeContext = false) {
-  const results = collectInfo(regexPatterns.Url, includeContext);
+  const results = collectInfo(extractedPatterns.Url, includeContext);
   return results.filter(r => {
     const url = r.value.toLowerCase();
     // 排除静态资源扩展名
@@ -292,10 +292,10 @@ function extractJsFiles(includeContext = false) {
   const seen = new Set();
   
   // 从 script 标签提取
-  const rawPatterns = [regexPatterns.JSFilePath];
+  const rawPatterns = [extractedPatterns.JSFilePath];
   
   rawPatterns.forEach(pattern => {
-    for (const match of pageSource.matchAll(pattern)) {
+    for (const match of enhancedPageSource.matchAll(pattern)) {
       const jsPath = match[1] || match[2];
       if (jsPath && !jsPath.endsWith('.map')) {
         const fullPath = dealUrl(jsPath);
@@ -343,7 +343,7 @@ function extractJsFiles(includeContext = false) {
 }
 
 function extractJWTs(includeContext = false) {
-  const results = collectInfo(regexPatterns.JWT, includeContext);
+  const results = collectInfo(extractedPatterns.JWT, includeContext);
   return results.filter(r => {
     const parts = r.value.split('.');
     return parts.length === 3 && parts[0].startsWith('eyJ');
@@ -351,7 +351,7 @@ function extractJWTs(includeContext = false) {
 }
 
 function extractSecrets(includeContext = false) {
-  return collectInfo(regexPatterns.Secret, includeContext);
+  return collectInfo(extractedPatterns.Secret, includeContext);
 }
 
 // 新增敏感信息提取函数（带上下文）
@@ -367,80 +367,80 @@ function extractIDCards(includeContext = false) {
     return checkCodes[sum % 11] === id[17].toUpperCase();
   };
   
-  const results = collectInfo(regexPatterns.IDCard, includeContext);
+  const results = collectInfo(extractedPatterns.IDCard, includeContext);
   return results.filter(r => validateIDCard(r.value));
 }
 
 function extractAWSKeys(includeContext = false) {
-  return collectInfo(regexPatterns.AWS_Key, includeContext);
+  return collectInfo(extractedPatterns.AWS_Key, includeContext);
 }
 
 function extractAWSSecrets(includeContext = false) {
-  return collectInfo(regexPatterns.AWS_Secret, includeContext);
+  return collectInfo(extractedPatterns.AWS_Secret, includeContext);
 }
 
 function extractGitHubTokens(includeContext = false) {
-  return collectInfo(regexPatterns.GitHub_Token, includeContext);
+  return collectInfo(extractedPatterns.GitHub_Token, includeContext);
 }
 
 function extractGitLabTokens(includeContext = false) {
-  return collectInfo(regexPatterns.GitLab_Token, includeContext);
+  return collectInfo(extractedPatterns.GitLab_Token, includeContext);
 }
 
 function extractBaiduMapKeys(includeContext = false) {
-  return collectInfo(regexPatterns.BaiduMapKey, includeContext);
+  return collectInfo(extractedPatterns.BaiduMapKey, includeContext);
 }
 
 function extractAliyunKeys(includeContext = false) {
-  return collectInfo(regexPatterns.AliyunKey, includeContext);
+  return collectInfo(extractedPatterns.AliyunKey, includeContext);
 }
 
 function extractTencentKeys(includeContext = false) {
-  return collectInfo(regexPatterns.TencentKey, includeContext);
+  return collectInfo(extractedPatterns.TencentKey, includeContext);
 }
 
 function extractAuthTokens(includeContext = false) {
-  return collectInfo(regexPatterns.AuthInfo, includeContext);
+  return collectInfo(extractedPatterns.AuthInfo, includeContext);
 }
 
 function extractDatabaseUrls(includeContext = false) {
-  return collectInfo(regexPatterns.Database, includeContext);
+  return collectInfo(extractedPatterns.Database, includeContext);
 }
 
 function extractMongoDBURIs(includeContext = false) {
-  return collectInfo(regexPatterns.MongoDB_URI, includeContext);
+  return collectInfo(extractedPatterns.MongoDB_URI, includeContext);
 }
 
 function extractWebhooks(includeContext = false) {
-  return collectInfo(regexPatterns.Webhook, includeContext);
+  return collectInfo(extractedPatterns.Webhook, includeContext);
 }
 
 function extractStripeKeys(includeContext = false) {
-  return collectInfo(regexPatterns.StripeKey, includeContext);
+  return collectInfo(extractedPatterns.StripeKey, includeContext);
 }
 
 function extractSendgridKeys(includeContext = false) {
-  return collectInfo(regexPatterns.SendgridKey, includeContext);
+  return collectInfo(extractedPatterns.SendgridKey, includeContext);
 }
 
 function extractPrivateKeys(includeContext = false) {
-  return collectInfo(regexPatterns.CryptoPrivate, includeContext);
+  return collectInfo(extractedPatterns.CryptoPrivate, includeContext);
 }
 
 function extractFixedPhones(includeContext = false) {
-  return collectInfo(regexPatterns.Landline, includeContext);
+  return collectInfo(extractedPatterns.Landline, includeContext);
 }
 
 function extract400Phones(includeContext = false) {
-  return collectInfo(regexPatterns['400Phone'], includeContext);
+  return collectInfo(extractedPatterns['400Phone'], includeContext);
 }
 
 function extractBase64Data(includeContext = false) {
-  return collectInfo(regexPatterns.Base64Data, includeContext);
+  return collectInfo(extractedPatterns.Base64Data, includeContext);
 }
 
 function extractJSONAPIKeys(includeContext = false) {
-  return collectInfo(regexPatterns.JsonApiKey, includeContext);
+  return collectInfo(extractedPatterns.JsonApiKey, includeContext);
 }
 
 // 使用自定义正则提取（增强版）
@@ -456,7 +456,7 @@ function extractWithCustomRegex(pattern, includeContext = false) {
 
 // 刷新页面源码
 function refreshPageSource() {
-  pageSource = '';
+  enhancedPageSource = '';
   sourceMap.clear();
   initPageSource();
 }
@@ -464,7 +464,7 @@ function refreshPageSource() {
 // 统计信息
 function getExtractionStats() {
   return {
-    sourceLength: pageSource.length,
+    sourceLength: enhancedPageSource.length,
     lineCount: sourceMap.size,
     cacheSize: sourceMap.size
   };
@@ -473,7 +473,7 @@ function getExtractionStats() {
 // 导出函数
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
-    regexPatterns,
+    extractedPatterns,
     initPageSource,
     buildSourceMap,
     findContext,

@@ -17,9 +17,10 @@
     <nav class="pf-tabs">
       <button id="tab-info" class="pf-tab  pf-tab-active">信息收集</button>
       <button id="tab-info-extract" class="pf-tab">信息提取</button>
-      <button id="tab-xss" class="pf-tab">XSS测试</button>
+      <button id="tab-xss" class="pf-tab">XSS 测试</button>
       <button id="tab-sql" class="pf-tab">SQL 注入</button>
       <button id="tab-security" class="pf-tab">端点安全扫描</button>
+      <button id="tab-cloud" class="pf-tab">☁️ 云存储检测</button>
       <button id="tab-shodan" class="pf-tab">Shodan 主机信息</button>
       <button id="tab-tools" class="pf-tab">辅助工具</button>
       <button id="tab-team" class="pf-tab">关于作者</button>
@@ -52,8 +53,10 @@
           <input id="encoderInput" class="pf-input" type="text" placeholder="输入待转换的 Payload">
           <div class="pf-encoder-actions">
             <button id="encHtml" class="pf-btn">HTML 实体</button>
+            <button id="decHtml" class="pf-btn">HTML 解码</button>
+            <button id="encHex" class="pf-btn">HEX 编码</button>
+            <button id="decHex" class="pf-btn">HEX 解码</button>
             <button id="encUrl" class="pf-btn">URL 编码</button>
-            <button id="encHex" class="pf-btn">十六进制</button>
           </div>
           <ul id="encoderList" class="pf-list"></ul>
         </div>
@@ -390,12 +393,16 @@
                 <textarea id="encodeInput" class="pf-textarea" rows="3" placeholder="输入要编码/解码的内容"></textarea>
               </div>
               <div class="pf-encoder-actions">
-                <button class="pf-btn encode-btn" data-type="url" data-action="encode">URL编码</button>
-                <button class="pf-btn encode-btn" data-type="url" data-action="decode">URL解码</button>
-                <button class="pf-btn encode-btn" data-type="base64" data-action="encode">Base64编码</button>
-                <button class="pf-btn encode-btn" data-type="base64" data-action="decode">Base64解码</button>
-                <button class="pf-btn encode-btn" data-type="unicode" data-action="encode">Unicode编码</button>
-                <button class="pf-btn encode-btn" data-type="unicode" data-action="decode">Unicode解码</button>
+                <button class="pf-btn encode-btn" data-type="url" data-action="encode">URL 编码</button>
+                <button class="pf-btn encode-btn" data-type="url" data-action="decode">URL 解码</button>
+                <button class="pf-btn encode-btn" data-type="base64" data-action="encode">Base64 编码</button>
+                <button class="pf-btn encode-btn" data-type="base64" data-action="decode">Base64 解码</button>
+                <button class="pf-btn encode-btn" data-type="html" data-action="encode">HTML 编码</button>
+                <button class="pf-btn encode-btn" data-type="html" data-action="decode">HTML 解码</button>
+                <button class="pf-btn encode-btn" data-type="hex" data-action="encode">HEX 编码</button>
+                <button class="pf-btn encode-btn" data-type="hex" data-action="decode">HEX 解码</button>
+                <button class="pf-btn encode-btn" data-type="unicode" data-action="encode">Unicode 编码</button>
+                <button class="pf-btn encode-btn" data-type="unicode" data-action="decode">Unicode 解码</button>
               </div>
               <div class="pf-field" style="margin-top: 10px;">
                 <div class="pf-field-label">结果</div>
@@ -698,6 +705,232 @@
         </div>
       </section>
 
+      <section id="mod-cloud" class="pf-module pf-hidden">
+        <div class="pf-actions">
+          <button id="cloud-scan-now" class="pf-btn">🔍 立即扫描</button>
+          <button id="cloud-refresh" class="pf-btn">🔄 刷新</button>
+          <button id="cloud-export" class="pf-btn">📥 导出结果</button>
+        </div>
+
+        <div class="pf-vents"></div>
+
+        <div class="pf-card">
+          <div class="pf-configs-title pf-configs-title-card">扫描统计</div>
+          <div class="pf-card-body">
+            <div class="pf-cloud-stats">
+              <div class="pf-stat-item">
+                <span class="pf-stat-label">发现 URL</span>
+                <span id="cloud-stat-urls" class="pf-stat-value">0</span>
+              </div>
+              <div class="pf-stat-item">
+                <span class="pf-stat-label">发现漏洞</span>
+                <span id="cloud-stat-vulns" class="pf-stat-value">0</span>
+              </div>
+              <div class="pf-stat-item">
+                <span class="pf-stat-label">云厂商</span>
+                <span id="cloud-stat-vendors" class="pf-stat-value">-</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="pf-vents"></div>
+
+        <div class="pf-card">
+          <div class="pf-configs-title pf-configs-title-card">检测结果</div>
+          <div class="pf-card-body">
+            <div id="cloud-loading" class="pf-loading pf-hidden">
+              <div class="pf-spinner"></div>
+              <span>正在扫描云存储桶...</span>
+            </div>
+            <ul id="cloud-result-list" class="pf-list"></ul>
+            <div id="cloud-no-result" class="pf-empty">暂无检测结果</div>
+          </div>
+        </div>
+
+        <div class="pf-vents"></div>
+
+        <div class="pf-card">
+          <div class="pf-configs-title pf-configs-title-card">
+            历史记录
+            <div class="pf-actions-right">
+              <button id="cloud-history-prev" class="pf-btn pf-btn-sm">⏮ 上一页</button>
+              <button id="cloud-history-next" class="pf-btn pf-btn-sm">下一步 ⏭</button>
+              <button id="cloud-history-clear" class="pf-btn pf-btn-sm pf-btn-danger">清空</button>
+            </div>
+          </div>
+          <div class="pf-card-body">
+            <div class="pf-field pf-field-inline">
+              <label class="pf-field-label">过滤：</label>
+              <select id="cloud-filter-vendor" class="pf-select pf-select-sm">
+                <option value="">全部云厂商</option>
+                <option value="aliyun">阿里云</option>
+                <option value="tencent">腾讯云</option>
+                <option value="huawei">华为云</option>
+                <option value="aws">AWS</option>
+                <option value="qiniu">七牛云</option>
+                <option value="qing">青云</option>
+                <option value="upyun">又拍云</option>
+                <option value="jd">京东云</option>
+                <option value="kingsoft">金山云</option>
+                <option value="tianyi">天翼云</option>
+              </select>
+              <select id="cloud-filter-level" class="pf-select pf-select-sm">
+                <option value="">全部等级</option>
+                <option value="CRITICAL">严重</option>
+                <option value="HIGH">高危</option>
+                <option value="MEDIUM">中危</option>
+                <option value="LOW">低危</option>
+              </select>
+            </div>
+            <ul id="cloud-history-list" class="pf-list"></ul>
+            <div id="cloud-history-empty" class="pf-empty">暂无历史记录</div>
+          </div>
+        </div>
+
+        <div class="pf-vents"></div>
+
+        <div class="pf-card">
+          <div class="pf-configs-title pf-configs-title-card">
+            ☁️ 云存储配置
+            <button id="cloud-settings-toggle" class="pf-btn pf-btn-sm">⚙️ 配置设置</button>
+          </div>
+          <div class="pf-card-body">
+            <div id="cloud-settings-container" class="pf-hidden">
+              <!-- 检测策略设置 -->
+              <div class="pf-configs-subtitle">检测策略</div>
+              <p class="pf-text-help">影响被动检测的请求类型与风险面</p>
+              
+              <div class="pf-field">
+                <label class="pf-field-label">
+                  安全模式 (被动)
+                  <button id="cloud-safety-mode-help" class="pf-btn-help" title="开启后跳过 PUT/DELETE/ACL 写/Policy 写等写入探测">?</button>
+                </label>
+                <div class="pf-switch-container">
+                  <div id="cloud-safety-mode" class="switch"></div>
+                </div>
+              </div>
+
+              <div class="pf-field">
+                <label class="pf-field-label">
+                  检测 ACL
+                  <button id="cloud-detect-acl-help" class="pf-btn-help" title="包含 ACL 读取 (写入类操作会被安全模式拦截)">?</button>
+                </label>
+                <div class="pf-switch-container">
+                  <div id="cloud-detect-acl" class="switch"></div>
+                </div>
+              </div>
+
+              <div class="pf-field">
+                <label class="pf-field-label">
+                  检测 Policy
+                  <button id="cloud-detect-policy-help" class="pf-btn-help" title="被动模式下写入类操作会被安全模式拦截">?</button>
+                </label>
+                <div class="pf-switch-container">
+                  <div id="cloud-detect-policy" class="switch"></div>
+                </div>
+              </div>
+
+              <div class="pf-field">
+                <label class="pf-field-label">
+                  目录回溯探测
+                  <button id="cloud-backtrack-help" class="pf-btn-help" title="开启后遍历检测会从当前路径逐级回溯到根目录 (请求更多，默认关闭)">?</button>
+                </label>
+                <div class="pf-switch-container">
+                  <div id="cloud-backtrack" class="switch"></div>
+                </div>
+              </div>
+
+              <div class="pf-field">
+                <label class="pf-field-label">
+                  页面内容扫描
+                  <button id="cloud-page-scan-help" class="pf-btn-help" title="扫描页面 HTML 中疑似云存储域名/URL 并触发检测 (请求更多，默认关闭)">?</button>
+                </label>
+                <div class="pf-switch-container">
+                  <div id="cloud-page-scan" class="switch"></div>
+                </div>
+              </div>
+
+              <div class="pf-vents"></div>
+              <section class="pf-actions">
+                <button id="cloud-reset-settings" class="pf-btn">重置设置</button>
+              </section>
+
+              <!-- 高级性能设置 -->
+              <div class="pf-configs-subtitle" style="margin-top: 20px;">高级性能设置</div>
+              <p class="pf-text-help">自定义页面内容扫描的深度参数，调整性能与检测覆盖率</p>
+
+              <div class="pf-field">
+                <label class="pf-field-label">
+                  扫描深度参数
+                  <button id="cloud-depth-help" class="pf-btn-help" title="提升扫描深度会增加页面加载时的 CPU 和内存消耗，极端场景下可能影响浏览器流畅度">?</button>
+                </label>
+                <input id="cloud-scan-depth" class="pf-input pf-input-sm" type="number" min="10" max="100" placeholder="Default: 40">
+              </div>
+
+              <div class="pf-field">
+                <label class="pf-field-label">外链 JS 扫描数量
+                  <button id="cloud-external-js-help" class="pf-btn-help" title="最多扫描的外链 JS 文件数量 (10-100)">?</button>
+                </label>
+                <input id="cloud-external-js-limit" class="pf-input pf-input-sm" type="number" min="10" max="100" placeholder="Default: 20">
+              </div>
+
+              <div class="pf-field">
+                <label class="pf-field-label">内联 JS 扫描数量
+                  <button id="cloud-inline-js-help" class="pf-btn-help" title="最多扫描的内联 JS 代码块数量 (5-50)">?</button>
+                </label>
+                <input id="cloud-inline-js-limit" class="pf-input pf-input-sm" type="number" min="5" max="50" placeholder="Default: 10">
+              </div>
+
+              <div class="pf-field">
+                <label class="pf-field-label">每个文件最大扫描长度 (KB)
+                  <button id="cloud-file-size-help" class="pf-btn-help" title="每个 JS 文件最大扫描的内容长度 (100-5000)">?</button>
+                </label>
+                <input id="cloud-file-max-size" class="pf-input pf-input-sm" type="number" min="100" max="5000" placeholder="Default: 1024">
+              </div>
+
+              <div class="pf-field">
+                <label class="pf-field-label">
+                  总候选 URL 上限
+                  <button id="cloud-url-limit-help" class="pf-btn-help" title="最多发送给后台检测的候选 URL 数量 (20-200)">?</button>
+                </label>
+                <input id="cloud-url-max-count" class="pf-input pf-input-sm" type="number" min="20" max="200" placeholder="Default: 60">
+              </div>
+
+              <div class="pf-vents"></div>
+              <section class="pf-actions">
+                <button id="cloud-reset-performance" class="pf-btn">重置性能设置</button>
+              </section>
+            </div>
+
+            <!-- 黑白名单管理 -->
+            <div class="pf-configs-subtitle" style="margin-top: 20px;">黑白名单管理</div>
+            <div class="pf-field">
+              <label class="pf-field-label">加入白名单：</label>
+              <input id="cloud-whitelist-input" class="pf-input pf-input-sm" type="text" placeholder="域名或 URL">
+              <button id="cloud-whitelist-add" class="pf-btn pf-btn-sm">添加</button>
+            </div>
+            <div class="pf-field">
+              <label class="pf-field-label">加入黑名单：</label>
+              <input id="cloud-blacklist-input" class="pf-input pf-input-sm" type="text" placeholder="域名或 URL">
+              <button id="cloud-blacklist-add" class="pf-btn pf-btn-sm">添加</button>
+            </div>
+            <div id="cloud-lists-container" class="pf-hidden">
+              <div class="pf-vents"></div>
+              <div class="pf-field">
+                <label class="pf-field-label">白名单：</label>
+                <ul id="cloud-whitelist" class="pf-list pf-list-compact"></ul>
+              </div>
+              <div class="pf-vents"></div>
+              <div class="pf-field">
+                <label class="pf-field-label">黑名单：</label>
+                <ul id="cloud-blacklist" class="pf-list pf-list-compact"></ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <section id="mod-shodan" class="pf-module pf-hidden">
         <div class="pf-configs-title">Shodan 主机信息</div>
         <div class="pf-card">
@@ -752,6 +985,7 @@
     <script src="modules/map-extractor.js"></script>
     <script src="modules/custom-regex.js"></script>
     <script src="modules/vue-detector.js"></script>
+    <script src="cloud-module.js"></script>
     <script src="popup.js"></script>
   </body>
 </html>

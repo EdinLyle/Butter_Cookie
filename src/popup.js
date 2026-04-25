@@ -7,8 +7,10 @@ const cspListEl = q("#csp-list");
 const readCspBtn = q("#readCsp");
 const encoderInputEl = q("#encoderInput");
 const encHtmlBtn = q("#encHtml");
+const decHtmlBtn = q("#decHtml");
 const encUrlBtn = q("#encUrl");
 const encHexBtn = q("#encHex");
+const decHexBtn = q("#decHex");
 const encoderListEl = q("#encoderList");
 const sqlMethodEl = q("#sqlMethod");
 const sqlUrlEl = q("#sqlUrl");
@@ -1723,6 +1725,7 @@ document.addEventListener("DOMContentLoaded", () => {
     info: q("#tab-info"),
     "info-extract": q("#tab-info-extract"),
     security: q("#tab-security"),
+    cloud: q("#tab-cloud"),
     shodan: q("#tab-shodan"),
     tools: q("#tab-tools"),
     team: q("#tab-team"),
@@ -1733,6 +1736,7 @@ document.addEventListener("DOMContentLoaded", () => {
     info: q("#mod-info"),
     "info-extract": q("#mod-info-extract"),
     security: q("#mod-security"),
+    cloud: q("#mod-cloud"),
     shodan: q("#mod-shodan"),
     tools: q("#mod-tools"),
     team: q("#mod-team"),
@@ -1840,7 +1844,9 @@ document.addEventListener("DOMContentLoaded", () => {
   tabs.xss.addEventListener("click", () => switchTab("xss"));
   tabs.sql.addEventListener("click", () => switchTab("sql"));
   tabs.info.addEventListener("click", () => switchTab("info"));
+  tabs["info-extract"].addEventListener("click", () => switchTab("info-extract"));
   tabs.security.addEventListener("click", () => switchTab("security"));
+  tabs.cloud.addEventListener("click", () => switchTab("cloud"));
   tabs.shodan.addEventListener("click", () => switchTab("shodan"));
   tabs.tools.addEventListener("click", () => switchTab("tools"));
   tabs.team.addEventListener("click", () => switchTab("team"));
@@ -3946,7 +3952,25 @@ document.addEventListener("DOMContentLoaded", () => {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
+    
+  const decHtml = (s) => {
+    const str = String(s)
+      .replace(/&amp;/g, "&")
+      .replace(/&lt;/g, "<")
+      .replace(/&gt;/g, ">")
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'");
+    
+    // 处理数字实体（十进制）
+    return str.replace(/&#(\d+);/g, (match, dec) => {
+      return String.fromCharCode(parseInt(dec, 10));
+    }).replace(/&#x([0-9A-Fa-f]+);/g, (match, hex) => {
+      return String.fromCharCode(parseInt(hex, 16));
+    });
+  };
+  
   const encUrl = (s) => encodeURIComponent(String(s));
+  
   const encHex = (s) => {
     const t = String(s);
     let out = "";
@@ -3956,6 +3980,17 @@ document.addEventListener("DOMContentLoaded", () => {
       else out += "\\u" + code.toString(16).padStart(4, "0");
     }
     return out;
+  };
+  
+  const decHex = (s) => {
+    const str = String(s).replace(/\s/g, '');
+    // 处理 \xHH 格式
+    const decoded = str.replace(/\\x([0-9A-Fa-f]{2})/g, (match, hex) => {
+      return String.fromCharCode(parseInt(hex, 16));
+    }).replace(/\\u([0-9A-Fa-f]{4})/g, (match, hex) => {
+      return String.fromCharCode(parseInt(hex, 16));
+    });
+    return decoded;
   };
   const renderEncResults = (obj) => {
     encoderListEl.textContent = "";
@@ -3990,9 +4025,20 @@ document.addEventListener("DOMContentLoaded", () => {
     else if (mode === "hex") { name = "十六进制转义"; value = encHex(t); }
     renderEncResults({ [name]: value });
   };
+  
+  const runDecSingle = (mode) => {
+    const t = encoderInputEl.value || "";
+    let name = "", value = "";
+    if (mode === "html") { name = "HTML 解码"; value = decHtml(t); }
+    else if (mode === "hex") { name = "HEX 解码"; value = decHex(t); }
+    renderEncResults({ [name]: value });
+  };
+  
   encHtmlBtn.addEventListener("click", () => runEncSingle("html"));
+  decHtmlBtn.addEventListener("click", () => runDecSingle("html"));
   encUrlBtn.addEventListener("click", () => runEncSingle("url"));
   encHexBtn.addEventListener("click", () => runEncSingle("hex"));
+  decHexBtn.addEventListener("click", () => runDecSingle("hex"));
 
   // Auto-select inputs
   document.querySelectorAll(".auto-select").forEach(el => {
@@ -4845,6 +4891,35 @@ document.addEventListener("DOMContentLoaded", () => {
             result = action === 'encode'
               ? btoa(unescape(encodeURIComponent(input)))
               : decodeURIComponent(escape(atob(input)));
+            break;
+          case 'hex':
+            if (action === 'encode') {
+              result = input.split('').map(char => char.charCodeAt(0).toString(16).padStart(2, '0')).join('');
+            } else {
+              result = input.match(/.{1,2}/g)?.map(byte => String.fromCharCode(parseInt(byte, 16))).join('') || '';
+            }
+            break;
+          case 'html':
+            if (action === 'encode') {
+              const htmlEntities = {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#39;'
+              };
+              result = input.replace(/[&<>"']/g, char => htmlEntities[char]);
+            } else {
+              const htmlEntities = {
+                '&amp;': '&',
+                '&lt;': '<',
+                '&gt;': '>',
+                '&quot;': '"',
+                '&#39;': "'",
+                '&apos;': "'"
+              };
+              result = input.replace(/&amp;|&lt;|&gt;|&quot;|&#39;|&apos;/g, match => htmlEntities[match]);
+            }
             break;
           case 'unicode':
             if (action === 'encode') {

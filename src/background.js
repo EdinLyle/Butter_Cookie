@@ -1,13 +1,12 @@
 const store = {};
 
-// 用于 User-Agent 头设置的规则管理
+// 用于User-Agent头设置的规则管理
 let currentUserAgentRuleId = 1;
 const userAgentRules = new Map();
 
 // Shodan 功能集成
 const CACHE_HOST = {}
 const HOSTNAME_REGEX = /^(([^:\/?#]+):)?(\/\/([^\/?#]*))?([^?#]*)(\?([^#]*))?(#(.*))?/
-const PENDING_SHODAN_REQUESTS = new Map(); // 修复并发问题
 
 function getHostname(url) {
   try {
@@ -70,7 +69,6 @@ function hostLookup(hostname, ip, callback) {
     .catch(error => deleteCache(hostname))
 }
 
-// 修复并发问题 - 添加回调队列支持
 function getShodanHostInfo(hostname, callback) {
   // Check cache first
   let cached = CACHE_HOST[hostname]
@@ -79,31 +77,18 @@ function getShodanHostInfo(hostname, callback) {
     return
   }
 
-  // 修复并发问题 - 检查是否有进行中的请求
-  if (PENDING_SHODAN_REQUESTS.has(hostname)) {
-    PENDING_SHODAN_REQUESTS.get(hostname).push(callback);
-    return;
-  }
-  
-  // Initialize callback queue
-  PENDING_SHODAN_REQUESTS.set(hostname, [callback]);
-
   // Resolve the hostname to its IP address, which then gets passed to the actual Shodan host lookup
   dnsLookup(hostname, ip => {
     hostLookup(hostname, ip, host => {
       // Make sure we got a response back for the right IP
-      const pendingCallbacks = PENDING_SHODAN_REQUESTS.get(hostname) || [];
-      PENDING_SHODAN_REQUESTS.delete(hostname);
-      
       if (host.ip === ip) {
         // Update the hostname cache
         host = saveCache(hostname, host)
-        // Call all pending callbacks
-        pendingCallbacks.forEach(cb => cb({ hostname, host }));
+        callback({ hostname, host })
       } else {
         // Delete "fetching" status
         deleteCache(hostname)
-        pendingCallbacks.forEach(cb => cb(null));
+        callback(null)
       }
     })
   })
@@ -157,7 +142,7 @@ chrome.contextMenus.removeAll(() => {
         'url': shodanUrl,
       })
     }
-  });
+  })
 });
 
 chrome.webRequest.onHeadersReceived.addListener(
@@ -183,18 +168,10 @@ chrome.webRequest.onHeadersReceived.addListener(
   { urls: ["<all_urls>"], types: ["main_frame", "sub_frame"] },
   ["responseHeaders"]
 );
-
-// 添加 tab 关闭监听 - 清理 CSP 缓存（修复内存泄漏）
-chrome.tabs.onRemoved.addListener((tabId) => {
-  if (store[tabId]) {
-    delete store[tabId];
-  }
-});
-
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (!message || !message.type && !message.cmd && !message.action) return;
 
-  // 信息提取模块 - 获取 Cookie
+  // 信息提取模块 - 获取Cookie
   if (message.action === 'getCookies') {
     chrome.cookies.getAll({ url: message.url }, (cookies) => {
       if (chrome.runtime.lastError) {
@@ -207,7 +184,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
-  // 信息提取模块 - 检查 URL 是否存在
+  // 信息提取模块 - 检查URL是否存在
   if (message.action === 'checkUrl') {
     fetch(message.url, { method: 'HEAD' })
       .then(response => {
@@ -302,7 +279,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           }
         });
 
-        // 如果有 User-Agent 头，设置 declarativeNetRequest 规则
+        // 如果有User-Agent头，设置declarativeNetRequest规则
         if (userAgent) {
           await setUserAgentRule(url, userAgent);
         }
@@ -316,22 +293,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         const ms = Date.now() - start;
         const h = [];
         resp.headers.forEach((v, k) => h.push(`${k}: ${v}`));
-        
-        // 修复响应截断问题 - 正确处理多字节字符
         const text = await resp.text();
         const limit = 220000;
-        let bodyOut = text;
+        const bodyOut = text.length > limit ? (text.slice(0, limit) + `\n\n...[TRUNCATED ${text.length - limit} chars]`) : text;
         
-        if (text.length > limit) {
-          // 确保在完整字符边界截断
-          const truncated = text.slice(0, limit);
-          const lastChar = truncated.trimEnd().slice(-1);
-          // 如果是多字节字符（如中文），回退一个字符
-          const cutIndex = lastChar.match(/[\u4e00-\u9fa5]/) ? limit - 1 : limit;
-          bodyOut = text.slice(0, cutIndex) + `\n\n...[TRUNCATED ${text.length - cutIndex} chars]`;
-        }
-        
-        // 清除 User-Agent 规则
+        // 清除User-Agent规则
         if (userAgent) {
           await clearUserAgentRule(url);
         }
@@ -495,17 +461,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 });
 
-// 生成唯一的规则 ID
+// 生成唯一的规则ID
 function generateRuleId() {
   return currentUserAgentRuleId++;
 }
 
-// 设置 User-Agent 规则
+// 设置User-Agent规则
 async function setUserAgentRule(url, userAgent) {
   try {
-    // 先清除相同 URL 的旧规则
-    await clearUserAgentRule(url);
-    
     const ruleId = generateRuleId();
     const rules = [{
       id: ruleId,
@@ -532,71 +495,24 @@ async function setUserAgentRule(url, userAgent) {
     userAgentRules.set(url, ruleId);
     return ruleId;
   } catch (error) {
-    console.error('设置 User-Agent 规则失败:', error);
+    console.error('设置User-Agent规则失败:', error);
     return null;
   }
 }
 
-// 清除 User-Agent 规则 - 修复内存泄漏
+// 清除User-Agent规则
 async function clearUserAgentRule(url) {
   try {
-    // 解析 URL 获取 hostname
-    let hostname = '';
-    try {
-      hostname = new URL(url).hostname;
-    } catch (e) {
-      hostname = url;
-    }
-    
-    // 查找并删除所有匹配该 host 的规则
-    const rulesToRemove = [];
-    const keysToRemove = [];
-    
-    for (const [storedUrl, ruleId] of userAgentRules.entries()) {
-      try {
-        const storedHostname = new URL(storedUrl).hostname;
-        // 如果 hostname 匹配，删除该规则
-        if (storedHostname === hostname || storedUrl.includes(hostname)) {
-          rulesToRemove.push(ruleId);
-          keysToRemove.push(storedUrl);
-        }
-      } catch (e) {
-        // URL 解析失败，使用字符串匹配
-        if (storedUrl.includes(hostname)) {
-          rulesToRemove.push(ruleId);
-          keysToRemove.push(storedUrl);
-        }
-      }
-    }
-    
-    if (rulesToRemove.length > 0) {
+    const ruleId = userAgentRules.get(url);
+    if (ruleId) {
       await chrome.declarativeNetRequest.updateDynamicRules({
-        removeRuleIds: rulesToRemove,
+        removeRuleIds: [ruleId],
         addRules: []
       });
-      
-      keysToRemove.forEach(key => userAgentRules.delete(key));
-      console.log(`[UA Rule] 已清除 ${rulesToRemove.length} 条 User-Agent 规则`);
+      userAgentRules.delete(url);
     }
   } catch (error) {
-    console.error('清除 User-Agent 规则失败:', error);
-  }
-}
-
-// 清除所有 User-Agent 规则（用于扩展卸载或重置）
-async function clearAllUserAgentRules() {
-  try {
-    const allRuleIds = Array.from(userAgentRules.values());
-    if (allRuleIds.length > 0) {
-      await chrome.declarativeNetRequest.updateDynamicRules({
-        removeRuleIds: allRuleIds,
-        addRules: []
-      });
-      userAgentRules.clear();
-      console.log('[UA Rule] 已清除所有 User-Agent 规则');
-    }
-  } catch (error) {
-    console.error('清除所有 User-Agent 规则失败:', error);
+    console.error('清除User-Agent规则失败:', error);
   }
 }
 

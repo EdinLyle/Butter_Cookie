@@ -120,8 +120,115 @@ function asciiEncode(str) {
   try {
     return str.split('').map(char => char.charCodeAt(0)).join(' ');
   } catch (e) {
-    throw new Error('ASCII编码失败: ' + e.message);
+    throw new Error('ASCII 编码失败：' + e.message);
   }
+}
+
+function asciiDecode(str) {
+  try {
+    return str.split(' ').map(num => {
+      const code = parseInt(num);
+      if (isNaN(code)) throw new Error('无效的 ASCII 码：' + num);
+      return String.fromCharCode(code);
+    }).join('');
+  } catch (e) {
+    throw new Error('ASCII 解码失败：' + e.message);
+  }
+}
+
+// HTML 实体编码/解码
+function htmlEncode(str) {
+  try {
+    const htmlEntities = {
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#39;',
+      '/': '&#x2F;',
+      '`': '&#x60;',
+      '=': '&#x3D;'
+    };
+    return str.replace(/[&<>"'/`=]/g, char => htmlEntities[char]);
+  } catch (e) {
+    throw new Error('HTML 编码失败：' + e.message);
+  }
+}
+
+function htmlDecode(str) {
+  try {
+    const htmlEntities = {
+      '&amp;': '&',
+      '&lt;': '<',
+      '&gt;': '>',
+      '&quot;': '"',
+      '&#39;': "'",
+      '&#x2F;': '/',
+      '&#x60;': '`',
+      '&#x3D;': '=',
+      '&nbsp;': ' '
+    };
+    
+    // 处理命名的 HTML 实体
+    let result = str;
+    Object.keys(htmlEntities).forEach(entity => {
+      const regex = new RegExp(entity.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
+      result = result.replace(regex, htmlEntities[entity]);
+    });
+    
+    // 处理数字 HTML 实体（十进制）
+    result = result.replace(/&#(\d+);/g, (match, dec) => {
+      return String.fromCharCode(parseInt(dec, 10));
+    });
+    
+    // 处理数字 HTML 实体（十六进制）
+    result = result.replace(/&#x([0-9A-Fa-f]+);/g, (match, hex) => {
+      return String.fromCharCode(parseInt(hex, 16));
+    });
+    
+    return result;
+  } catch (e) {
+    throw new Error('HTML 解码失败：' + e.message);
+  }
+}
+
+// HEX（十六进制）编码/解码
+function hexEncode(str) {
+  try {
+    let result = '';
+    for (let i = 0; i < str.length; i++) {
+      const hex = str.charCodeAt(i).toString(16).toUpperCase();
+      result += hex.padStart(2, '0');
+    }
+    return result;
+  } catch (e) {
+    throw new Error('HEX 编码失败：' + e.message);
+  }
+}
+
+function hexDecode(str) {
+  try {
+    // 移除空格和 0x 前缀
+    const cleanStr = str.replace(/\s/g, '').replace(/0x/gi, '');
+    
+    if (cleanStr.length % 2 !== 0) {
+      throw new Error('无效的 HEX 字符串：长度必须是偶数');
+    }
+    
+    let result = '';
+    for (let i = 0; i < cleanStr.length; i += 2) {
+      const hex = cleanStr.slice(i, i + 2);
+      const charCode = parseInt(hex, 16);
+      if (isNaN(charCode)) {
+        throw new Error('无效的 HEX 字符：' + hex);
+      }
+      result += String.fromCharCode(charCode);
+    }
+    return result;
+  } catch (e) {
+    throw new Error('HEX 解码失败：' + e.message);
+  }
+}
 }
 
 function asciiDecode(str) {
@@ -142,7 +249,9 @@ const encodeDecodeMethods = {
   base64: { name: 'Base64', encode: base64Encode, decode: base64Decode },
   base32: { name: 'Base32', encode: base32Encode, decode: base32Decode },
   unicode: { name: 'Unicode', encode: unicodeEncode, decode: unicodeDecode },
-  ascii: { name: 'ASCII', encode: asciiEncode, decode: asciiDecode }
+  ascii: { name: 'ASCII', encode: asciiEncode, decode: asciiDecode },
+  html: { name: 'HTML', encode: htmlEncode, decode: htmlDecode },
+  hex: { name: 'HEX', encode: hexEncode, decode: hexDecode }
 };
 
 // 执行编码
@@ -184,6 +293,10 @@ if (typeof module !== 'undefined' && module.exports) {
     unicodeDecode,
     asciiEncode,
     asciiDecode,
+    htmlEncode,
+    htmlDecode,
+    hexEncode,
+    hexDecode,
     encode,
     decode,
     getSupportedMethods,
